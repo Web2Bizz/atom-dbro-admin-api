@@ -1,0 +1,167 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1763150536224,
+      "tag": "0000_bouncy_longshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1763154724414,
+      "tag": "0001_low_grim_reaper",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1763157905253,
+      "tag": "0002_rapid_christian_walker",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1763192355435,
+      "tag": "0003_shallow_killraven",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1763192768760,
+      "tag": "0004_lush_tarot",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1763197198670,
+      "tag": "0005_chief_namor",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1763200000000,
+      "tag": "0006_fix_quest_types",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1763201000000,
+      "tag": "0007_fix_achievements_quest_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1763201717166,
+      "tag": "0008_slow_susan_delgado",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1763224758161,
+      "tag": "0009_regular_la_nuit",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1763229624078,
+      "tag": "0010_adorable_tana_nile",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1763230000000,
+      "tag": "0011_remove_users_city_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1763231000000,
+      "tag": "0012_add_users_avatar_urls",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "5",
+      "when": 1763232000000,
+      "tag": "0013_add_categories_and_update_quests",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1763233000000,
+      "tag": "0014_set_null_on_delete_organisation_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "5",
+      "when": 1763234000000,
+      "tag": "0015_add_users_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1763235000000,
+      "tag": "0016_add_record_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1763658668379,
+      "tag": "0017_rainy_thunderball",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1764000000000,
+      "tag": "0018_remove_users_quest_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1764000100000,
+      "tag": "0019_make_quest_achievement_id_nullable",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1764000200000,
+      "tag": "0020_update_quest_requirement_structure",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1763672912636,
+      "tag": "0021_cultured_quasar",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1763679620066,
+      "tag": "0022_clever_drax",
+      "breakpoints": true
+    }
+  ]
+}

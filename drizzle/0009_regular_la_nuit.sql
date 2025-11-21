@@ -1,0 +1,1 @@
+ALTER TABLE "quests" ALTER COLUMN "achievement_id" DROP NOT NULL;

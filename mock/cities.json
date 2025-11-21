@@ -1,0 +1,200 @@
+[
+	{
+		"name": "Ангарск",
+		"latitude": 52.5444,
+		"longitude": 103.8883,
+		"regionId": 1
+	},
+	{
+		"name": "Байкальск",
+		"latitude": 51.5167,
+		"longitude": 104.1333,
+		"regionId": 1
+	},
+	{
+		"name": "Балаково",
+		"latitude": 52.0333,
+		"longitude": 47.7833,
+		"regionId": 2
+	},
+	{
+		"name": "Билибино",
+		"latitude": 68.05,
+		"longitude": 166.45,
+		"regionId": 6
+	},
+	{
+		"name": "Волгодонск",
+		"latitude": 47.5167,
+		"longitude": 42.15,
+		"regionId": 3
+	},
+	{
+		"name": "Глазов",
+		"latitude": 58.1333,
+		"longitude": 52.6667,
+		"regionId": 2
+	},
+	{
+		"name": "Десногорск",
+		"latitude": 54.15,
+		"longitude": 33.2833,
+		"regionId": 7
+	},
+	{
+		"name": "Димитровград",
+		"latitude": 54.2167,
+		"longitude": 49.6167,
+		"regionId": 2
+	},
+	{
+		"name": "Железногорск",
+		"latitude": 56.25,
+		"longitude": 93.5333,
+		"regionId": 1
+	},
+	{
+		"name": "Заречный",
+		"latitude": 56.8167,
+		"longitude": 61.3167,
+		"regionId": 5
+	},
+	{
+		"name": "Зеленогорск",
+		"latitude": 56.1167,
+		"longitude": 94.5833,
+		"regionId": 1
+	},
+	{
+		"name": "Краснокаменск",
+		"latitude": 50.1,
+		"longitude": 118.0333,
+		"regionId": 6
+	},
+	{
+		"name": "Курчатов",
+		"latitude": 51.6667,
+		"longitude": 35.65,
+		"regionId": 7
+	},
+	{
+		"name": "Лесной",
+		"latitude": 58.6333,
+		"longitude": 59.8,
+		"regionId": 5
+	},
+	{
+		"name": "Неман",
+		"latitude": 55.0333,
+		"longitude": 22.0333,
+		"regionId": 8
+	},
+	{
+		"name": "Нижний Новгород",
+		"latitude": 56.2965,
+		"longitude": 43.9361,
+		"regionId": 2
+	},
+	{
+		"name": "Нововоронеж",
+		"latitude": 51.3167,
+		"longitude": 39.2167,
+		"regionId": 7
+	},
+	{
+		"name": "Новоуральск",
+		"latitude": 57.25,
+		"longitude": 60.0833,
+		"regionId": 5
+	},
+	{
+		"name": "Обнинск",
+		"latitude": 55.1,
+		"longitude": 36.6,
+		"regionId": 7
+	},
+	{
+		"name": "Озерск",
+		"latitude": 55.7558,
+		"longitude": 60.7029,
+		"regionId": 5
+	},
+	{
+		"name": "Омск",
+		"latitude": 54.9885,
+		"longitude": 73.3242,
+		"regionId": 1
+	},
+	{
+		"name": "Певек",
+		"latitude": 69.7,
+		"longitude": 170.3,
+		"regionId": 6
+	},
+	{
+		"name": "Полярные Зори",
+		"latitude": 67.3667,
+		"longitude": 32.5,
+		"regionId": 8
+	},
+	{
+		"name": "Саров",
+		"latitude": 54.9333,
+		"longitude": 43.3167,
+		"regionId": 2
+	},
+	{
+		"name": "Северск",
+		"latitude": 56.6,
+		"longitude": 84.8833,
+		"regionId": 1
+	},
+	{
+		"name": "Снежинск",
+		"latitude": 56.0851,
+		"longitude": 60.7314,
+		"regionId": 5
+	},
+	{
+		"name": "Советск",
+		"latitude": 55.0833,
+		"longitude": 21.8833,
+		"regionId": 8
+	},
+	{
+		"name": "Сосновый Бор",
+		"latitude": 59.8833,
+		"longitude": 29.0833,
+		"regionId": 8
+	},
+	{
+		"name": "Трехгорный",
+		"latitude": 54.8167,
+		"longitude": 58.45,
+		"regionId": 5
+	},
+	{
+		"name": "Удомля",
+		"latitude": 57.8833,
+		"longitude": 35.0167,
+		"regionId": 7
+	},
+	{
+		"name": "Усолье-Сибирское",
+		"latitude": 52.75,
+		"longitude": 103.6333,
+		"regionId": 1
+	},
+	{
+		"name": "Электросталь",
+		"latitude": 55.7833,
+		"longitude": 38.45,
+		"regionId": 7
+	},
+	{
+		"name": "Энергодар",
+		"latitude": 47.5,
+		"longitude": 34.65,
+		"regionId": 3
+	}
+]

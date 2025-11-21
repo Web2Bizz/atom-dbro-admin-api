@@ -1,0 +1,335 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  IMAGE_NAME: ${{ secrets.DOCKER_IMAGE_NAME || 'atom-dbro-backend' }}
+
+jobs:
+  build:
+    name: Build and Export Docker Image
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: ${{ env.IMAGE_NAME }}:latest
+          no-cache: true
+
+      - name: Verify image was built
+        run: |
+          if ! docker images | grep -q "${{ env.IMAGE_NAME }}.*latest"; then
+            echo "❌ ERROR: Docker image was not built successfully"
+            exit 1
+          fi
+          echo "✅ Docker image built successfully: ${{ env.IMAGE_NAME }}:latest"
+          docker images | grep "${{ env.IMAGE_NAME }}"
+
+      - name: Export Docker image to tar.gz
+        run: |
+          echo "📦 Exporting Docker image to tar.gz..."
+          docker save ${{ env.IMAGE_NAME }}:latest | gzip > image.tar.gz
+          
+          echo "📊 Image file info:"
+          ls -lh image.tar.gz
+          IMAGE_SIZE=$(du -h image.tar.gz | cut -f1)
+          echo "Image size: $IMAGE_SIZE"
+          
+          # Проверяем, что файл создан и не пустой
+          if [ ! -f image.tar.gz ] || [ ! -s image.tar.gz ]; then
+            echo "❌ ERROR: Failed to export Docker image"
+            exit 1
+          fi
+          
+          echo "✅ Docker image exported successfully"
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: image.tar.gz
+          retention-days: 1
+
+  transfer:
+    name: Transfer Image to Server
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: ./
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Validate SSH connection
+        run: |
+          SSH_PORT="${DEPLOY_SSH_PORT:-22}"
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "echo 'SSH connection successful' && hostname"
+
+      - name: Transfer Docker image to server
+        run: |
+          SSH_PORT="${DEPLOY_SSH_PORT:-22}"
+          
+          echo "📦 Transferring Docker image to server..."
+          echo "📊 Image file size: $(du -h image.tar.gz | cut -f1)"
+          
+          # Передаем образ на сервер
+          scp -o StrictHostKeyChecking=no -P "$SSH_PORT" image.tar.gz ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/tmp/
+          
+          # Проверяем, что файл успешно передан
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+            "if [ -f /tmp/image.tar.gz ]; then echo '✅ Image file transferred successfully'; ls -lh /tmp/image.tar.gz; else echo '❌ ERROR: Image file not found on server'; exit 1; fi"
+          
+          echo "✅ Docker image transferred successfully"
+        env:
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+
+  deploy:
+    name: Deploy Application
+    needs: transfer
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Deploy application
+        run: |
+          SSH_PORT="${DEPLOY_SSH_PORT:-22}"
+          ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} "export PROJECT_DIR_VALUE='$PROJECT_DIR_VALUE' CONTAINER_NAME='$CONTAINER_NAME' IMAGE_NAME='$IMAGE_NAME' SERVICE_NAME='$SERVICE_NAME' COMPOSE_PROJECT_NAME='$COMPOSE_PROJECT_NAME'; bash -s" << 'REMOTE_SCRIPT'
+            set -e
+            
+            IMAGE_NAME="${IMAGE_NAME:-atom-dbro-backend}"
+            PROJECT_DIR="$PROJECT_DIR_VALUE"
+            CONTAINER_NAME="${CONTAINER_NAME:-atom-dbro-app}"
+            SERVICE_NAME="${SERVICE_NAME:-app}"
+            COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-}"
+            
+            # Проверяем, что переменная PROJECT_DIR установлена
+            if [ -z "$PROJECT_DIR" ]; then
+              echo "❌ ERROR: PROJECT_DIR is not set"
+              exit 1
+            fi
+            
+            # Переходим в директорию проекта
+            echo "📁 Changing to project directory: $PROJECT_DIR"
+            cd "$PROJECT_DIR" || {
+              echo "❌ ERROR: Failed to change to project directory: $PROJECT_DIR"
+              exit 1
+            }
+            
+            # Проверяем, что docker-compose.yml существует
+            if [ ! -f "docker-compose.yml" ]; then
+              echo "❌ ERROR: docker-compose.yml not found in $PROJECT_DIR"
+              echo "Current directory: $(pwd)"
+              echo "Files in directory:"
+              ls -la || true
+              exit 1
+            fi
+            
+            echo "✅ Found docker-compose.yml in $(pwd)"
+            
+            # Загружаем образ в Docker
+            echo "📥 Importing Docker image from tar.gz..."
+            if [ ! -f /tmp/image.tar.gz ]; then
+              echo "❌ ERROR: Image file not found: /tmp/image.tar.gz"
+              exit 1
+            fi
+            
+            echo "📊 Image file size: $(du -h /tmp/image.tar.gz | cut -f1)"
+            docker load -i /tmp/image.tar.gz
+            
+            # Проверяем, что образ загружен
+            if ! docker images | grep -q "$IMAGE_NAME.*latest"; then
+              echo "❌ ERROR: Failed to import Docker image"
+              exit 1
+            fi
+            
+            echo "✅ Docker image imported successfully"
+            
+            # Удаляем временный файл
+            rm -f /tmp/image.tar.gz
+            echo "🧹 Cleaned up temporary image file"
+            
+            # Очищаем старые версии образа перед деплоем
+            echo "🧹 Removing old image versions (if any)..."
+            docker images "$IMAGE_NAME" --format "{{.Repository}}:{{.Tag}} {{.ID}}" | \
+              grep -v "latest" | \
+              awk '{print $2}' | \
+              xargs -r docker rmi -f || echo "No old image versions to remove"
+            
+            # Создание необходимых сетей Docker (если не существуют)
+            echo "🌐 Ensuring Docker networks exist..."
+            docker network create atom-external-network 2>/dev/null || echo "Network atom-external-network already exists"
+            docker network create atom-internal-network 2>/dev/null || echo "Network atom-internal-network already exists"
+            
+            # Перезапуск только контейнера приложения с новым образом
+            echo "🔄 Restarting application container with new image..."
+            echo "Working directory: $(pwd)"
+            echo "Container name: $CONTAINER_NAME"
+            echo "Service name: $SERVICE_NAME"
+            echo "Docker image: $IMAGE_NAME:latest"
+            
+            # Убеждаемся, что мы в правильной директории
+            if [ "$(pwd)" != "$PROJECT_DIR" ]; then
+              echo "⚠️ Warning: Not in project directory, changing to $PROJECT_DIR"
+              cd "$PROJECT_DIR" || exit 1
+            fi
+            
+            # Проверяем, что docker-compose.yml существует
+            COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml"
+            if [ ! -f "$COMPOSE_FILE" ]; then
+              echo "❌ ERROR: docker-compose.yml not found at $COMPOSE_FILE"
+              exit 1
+            fi
+            
+            # Проверяем, что docker-compose.yml содержит указанный сервис
+            if ! grep -q "^  $SERVICE_NAME:" "$COMPOSE_FILE"; then
+              echo "❌ ERROR: Service '$SERVICE_NAME' not found in docker-compose.yml"
+              echo "Available services:"
+              grep -E "^  [a-zA-Z-]+:" "$COMPOSE_FILE" || echo "No services found"
+              exit 1
+            fi
+            
+            # Устанавливаем переменные для docker-compose
+            export DOCKER_IMAGE="$IMAGE_NAME:latest"
+            echo "✅ DOCKER_IMAGE environment variable set to: $DOCKER_IMAGE"
+            
+            # Устанавливаем имя проекта (стек) для docker-compose, если указано
+            if [ -n "$COMPOSE_PROJECT_NAME" ]; then
+              export COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME"
+              echo "✅ COMPOSE_PROJECT_NAME set to: $COMPOSE_PROJECT_NAME"
+            else
+              echo "ℹ️ COMPOSE_PROJECT_NAME not set, using default (directory name)"
+            fi
+            
+            # Останавливаем и удаляем только контейнер приложения (если существует)
+            if docker ps -a --format "{{.Names}}" | grep -q "^${CONTAINER_NAME}$"; then
+              echo "🛑 Stopping existing container: $CONTAINER_NAME"
+              docker stop "$CONTAINER_NAME" 2>/dev/null || true
+              echo "🗑️ Removing existing container: $CONTAINER_NAME"
+              docker rm "$CONTAINER_NAME" 2>/dev/null || true
+            else
+              echo "ℹ️ Container $CONTAINER_NAME does not exist, will be created"
+            fi
+            
+            # Проверяем, что образ существует
+            if ! docker images | grep -q "$IMAGE_NAME.*latest"; then
+              echo "❌ ERROR: Docker image $IMAGE_NAME:latest not found"
+              echo "Available images:"
+              docker images | head -10
+              exit 1
+            fi
+            
+            # Запускаем только указанный сервис с новым образом
+            # --force-recreate: пересоздает контейнер даже если конфигурация не изменилась
+            # --no-deps: не запускает зависимости
+            # --pull never: не пытается скачать образ (он уже загружен)
+            # -p или --project-name: явно указываем имя проекта (стек)
+            echo "▶️ Starting service '$SERVICE_NAME' with docker compose..."
+            
+            if [ -n "$COMPOSE_PROJECT_NAME" ]; then
+              echo "Command: docker compose -f '$COMPOSE_FILE' -p '$COMPOSE_PROJECT_NAME' up -d --force-recreate --no-deps --pull never '$SERVICE_NAME'"
+              docker compose -f "$COMPOSE_FILE" -p "$COMPOSE_PROJECT_NAME" up -d --force-recreate --no-deps --pull never "$SERVICE_NAME"
+            else
+              echo "Command: docker compose -f '$COMPOSE_FILE' up -d --force-recreate --no-deps --pull never '$SERVICE_NAME'"
+              docker compose -f "$COMPOSE_FILE" up -d --force-recreate --no-deps --pull never "$SERVICE_NAME"
+            fi
+            
+            # Проверяем, что контейнер запустился
+            if ! docker ps --format "{{.Names}}" | grep -q "^${CONTAINER_NAME}$"; then
+              echo "❌ ERROR: Container $CONTAINER_NAME failed to start"
+              echo "Container status:"
+              docker ps -a | grep "$CONTAINER_NAME" || echo "Container not found"
+              exit 1
+            fi
+            
+            echo "✅ Container $CONTAINER_NAME started successfully"
+            
+            # Ожидание готовности контейнера
+            echo "⏳ Waiting for application container to be ready..."
+            MAX_CONTAINER_WAIT_ATTEMPTS=30
+            CONTAINER_WAIT_ATTEMPT=0
+            CONTAINER_READY=false
+            
+            while [ $CONTAINER_WAIT_ATTEMPT -lt $MAX_CONTAINER_WAIT_ATTEMPTS ]; do
+              # Проверяем, что контейнер запущен и работает
+              if docker ps | grep -q "$CONTAINER_NAME" && docker exec "$CONTAINER_NAME" echo "Container is ready" > /dev/null 2>&1; then
+                CONTAINER_READY=true
+                echo "✅ Container is ready and accepting commands"
+                break
+              fi
+              CONTAINER_WAIT_ATTEMPT=$((CONTAINER_WAIT_ATTEMPT + 1))
+              if [ $CONTAINER_WAIT_ATTEMPT -lt $MAX_CONTAINER_WAIT_ATTEMPTS ]; then
+                echo "Waiting for container to be ready... ($CONTAINER_WAIT_ATTEMPT/$MAX_CONTAINER_WAIT_ATTEMPTS)"
+                sleep 2
+              fi
+            done
+            
+            if [ "$CONTAINER_READY" != true ]; then
+              echo "❌ Application container failed to start or is not ready"
+              echo "📋 Container status:"
+              docker ps -a | grep "$CONTAINER_NAME" || echo "Container not found"
+              echo "📋 Container logs:"
+              docker logs "$CONTAINER_NAME" --tail 50 || true
+              exit 1
+            fi
+            
+            # Даем приложению время на полный запуск
+            echo "⏳ Waiting for application to fully start (10 seconds)..."
+            sleep 10
+            
+            # Очистка неиспользуемых Docker ресурсов (для экономии места)
+            echo "🧹 Cleaning up unused Docker resources..."
+            echo "📊 Disk usage before cleanup:"
+            df -h / | tail -1 || true
+            
+            # Удаляем старые версии образа (если есть)
+            docker images "$IMAGE_NAME" --format "{{.Repository}}:{{.Tag}} {{.ID}}" | \
+              grep -v "latest" | \
+              awk '{print $2}' | \
+              xargs -r docker rmi -f || true
+            
+            # Полная очистка неиспользуемых ресурсов (без volumes для безопасности)
+            # Удаляет: остановленные контейнеры, неиспользуемые образы, build cache, сети
+            docker system prune -a -f || echo "⚠️ Warning: Some resources could not be cleaned up"
+            
+            echo "📊 Disk usage after cleanup:"
+            df -h / | tail -1 || true
+            
+            echo "✅ Deployment completed successfully!"
+          REMOTE_SCRIPT
+        env:
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+          PROJECT_DIR_VALUE: ${{ secrets.DEPLOY_PROJECT_PATH }}
+          CONTAINER_NAME: ${{ secrets.DEPLOY_CONTAINER_NAME || 'atom-dbro-app' }}
+          SERVICE_NAME: ${{ secrets.DEPLOY_SERVICE_NAME || 'app' }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          COMPOSE_PROJECT_NAME: ${{ secrets.DEPLOY_COMPOSE_PROJECT_NAME || '' }}

@@ -1,0 +1,83 @@
+import { ApiProperty } from '@nestjs/swagger';
+import { z } from 'zod/v4';
+
+export const contactSchema = z.object({
+  name: z.string().min(1, 'Название контакта обязательно'),
+  value: z.string().min(1, 'Значение контакта обязательно'),
+});
+
+export type ContactDto = z.infer<typeof contactSchema>;
+
+export class ContactDtoClass {
+  @ApiProperty({ description: 'Название контакта', example: 'Телефон' })
+  name: string;
+
+  @ApiProperty({ description: 'Значение контакта', example: '+7 (999) 123-45-67' })
+  value: string;
+}
+
+export const createOrganizationSchema = z.object({
+  name: z.string().min(1, 'Название организации обязательно').max(255, 'Название не должно превышать 255 символов'),
+  cityId: z.number().int().positive('ID города должен быть положительным целым числом'),
+  typeId: z.number().int().positive('ID типа организации должен быть положительным целым числом'),
+  helpTypeIds: z.array(z.number().int().positive('ID вида помощи должен быть положительным целым числом')).min(1, 'Необходимо указать хотя бы один вид помощи').refine((ids) => new Set(ids).size === ids.length, {
+    message: 'Виды помощи должны быть уникальными',
+  }),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+  summary: z.string().optional(),
+  mission: z.string().optional(),
+  description: z.string().optional(),
+  goals: z.array(z.string()).optional(),
+  needs: z.array(z.string()).optional(),
+  address: z.string().optional(),
+  contacts: z.array(contactSchema).optional(),
+  gallery: z.array(z.string()).optional(),
+});
+
+export type CreateOrganizationDto = z.infer<typeof createOrganizationSchema>;
+
+export class CreateOrganizationDtoClass {
+  @ApiProperty({ description: 'Название организации', example: 'Благотворительный фонд' })
+  name: string;
+
+  @ApiProperty({ description: 'ID города', example: 1 })
+  cityId: number;
+
+  @ApiProperty({ description: 'ID типа организации', example: 1 })
+  typeId: number;
+
+  @ApiProperty({ description: 'ID видов помощи (уникальные значения)', example: [1, 2, 3], type: [Number] })
+  helpTypeIds: number[];
+
+  @ApiProperty({ description: 'Широта (опционально, если не указана, будет взята из города)', example: '55.7558', required: false })
+  latitude?: number;
+
+  @ApiProperty({ description: 'Долгота (опционально, если не указана, будет взята из города)', example: '37.6173', required: false })
+  longitude?: number;
+
+  @ApiProperty({ description: 'Краткое описание', example: 'Благотворительный фонд помощи детям', required: false })
+  summary?: string;
+
+  @ApiProperty({ description: 'Миссия организации', example: 'Помощь детям из малообеспеченных семей', required: false })
+  mission?: string;
+
+  @ApiProperty({ description: 'Полное описание организации', example: 'Наша организация занимается...', required: false })
+  description?: string;
+
+  @ApiProperty({ description: 'Цели организации', example: ['Цель 1', 'Цель 2'], required: false, type: [String] })
+  goals?: string[];
+
+  @ApiProperty({ description: 'Потребности организации', example: ['Нужда 1', 'Нужда 2'], required: false, type: [String] })
+  needs?: string[];
+
+  @ApiProperty({ description: 'Адрес организации', example: 'г. Москва, ул. Примерная, д. 1', required: false })
+  address?: string;
+
+  @ApiProperty({ description: 'Контакты организации', example: [{ name: 'Телефон', value: '+7 (999) 123-45-67' }], required: false, type: [ContactDtoClass] })
+  contacts?: ContactDtoClass[];
+
+  @ApiProperty({ description: 'Галерея изображений (URL)', example: ['https://example.com/image1.jpg'], required: false, type: [String] })
+  gallery?: string[];
+}
+
