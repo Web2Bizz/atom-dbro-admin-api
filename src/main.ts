@@ -15,7 +15,7 @@ async function bootstrap() {
     const organizationsLogger = new Logger('OrganizationsRequestLogger');
 
     app.use((req: any, res: any, next: any) => {
-      if (req.method === 'POST' && req.path.includes('/organizations')) {
+      if (req.method === 'POST' && req.path.includes('/admin/api') && req.path.includes('/organizations')) {
         const endpoint = req.originalUrl ?? req.path;
         const method = req.method;
         const bodyContent =
@@ -82,7 +82,7 @@ async function bootstrap() {
       defaultVersion: '1',
     });
 
-    app.setGlobalPrefix('api');
+    app.setGlobalPrefix('admin/api');
 
     const config = new DocumentBuilder()
       .setTitle('Atom DBRO Admin Backend API')
@@ -92,15 +92,15 @@ async function bootstrap() {
       .build();
 
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api', app, document);
+    SwaggerModule.setup('admin/api', app, document);
     console.log('Swagger configured');
 
     const port = process.env.PORT || 3000;
     await app.listen(port, '0.0.0.0');
     console.log(`🚀 Application is running on: http://0.0.0.0:${port}`);
-    console.log(`📚 Swagger API docs: http://0.0.0.0:${port}/api`);
-    console.log(`🌐 API v1 endpoints: http://0.0.0.0:${port}/api/v1`);
-    console.log(`🌐 API v2 endpoints: http://0.0.0.0:${port}/api/v2`);
+    console.log(`📚 Swagger API docs: http://0.0.0.0:${port}/admin/api`);
+    console.log(`🌐 API v1 endpoints: http://0.0.0.0:${port}/admin/api/v1`);
+    console.log(`🌐 API v2 endpoints: http://0.0.0.0:${port}/admin/api/v2`);
   } catch (error) {
     console.error('❌ Error starting application:', error);
     process.exit(1);
