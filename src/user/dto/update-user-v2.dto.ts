@@ -9,7 +9,7 @@ export const updateUserV2Schema = z.object({
   email: z.string().email('Некорректный формат email').optional(),
   avatarUrl: z.string().url('Некорректный формат URL').optional(),
   role: z.nativeEnum(UserRole, {
-    message: 'Роль должна быть одним из: USER, MODERATOR',
+    message: 'Роль должна быть одним из: USER, ADMIN',
   }).optional(),
   organisationId: z.number().int().positive('ID организации должен быть положительным числом').nullable().optional(),
 });

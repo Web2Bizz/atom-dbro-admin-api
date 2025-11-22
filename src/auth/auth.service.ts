@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { UserService } from '../user/user.service';
+import { UserRepository } from '../user/user.repository';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -13,6 +14,7 @@ export class AuthService {
 
   constructor(
     private userService: UserService,
+    private userRepository: UserRepository,
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {}
@@ -44,6 +46,11 @@ export class AuthService {
         throw new UnauthorizedException('Неверный email или пароль');
       }
 
+      // Проверяем, что пользователь имеет роль ADMIN
+      if (user.role !== 'ADMIN') {
+        throw new UnauthorizedException('Доступ разрешен только администраторам');
+      }
+
       const payload = { email: user.email, sub: user.id };
       const accessTokenExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN') || '24h';
       const refreshTokenExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
@@ -72,10 +79,17 @@ export class AuthService {
     try {
       const refreshTokenSecret = this.configService.get<string>('JWT_REFRESH_SECRET') || this.configService.get<string>('JWT_SECRET') || 'your-secret-key';
       const payload = this.jwtService.verify(refreshTokenDto.refresh_token, { secret: refreshTokenSecret });
-      const user = await this.userService.findOne(payload.sub);
+      
+      // Используем репозиторий для получения оригинальной роли (без форматирования)
+      const user = await this.userRepository.findById(payload.sub);
       
       if (!user) {
         throw new UnauthorizedException('Пользователь не найден');
+      }
+
+      // Проверяем, что пользователь имеет роль ADMIN
+      if (user.role !== 'ADMIN') {
+        throw new UnauthorizedException('Доступ разрешен только администраторам');
       }
 
       const newPayload = { email: user.email, sub: user.id };

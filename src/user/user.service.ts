@@ -21,8 +21,8 @@ export class UserService {
     if (role === 'USER') {
       return 'пользователь';
     }
-    if (role === 'MODERATOR') {
-      return 'модератор';
+    if (role === 'ADMIN') {
+      return 'администратор';
     }
     return role;
   }

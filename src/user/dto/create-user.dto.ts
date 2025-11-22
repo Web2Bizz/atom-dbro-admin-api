@@ -9,7 +9,7 @@ export const createUserSchema = z.object({
   email: z.string().email('Некорректный формат email').min(1, 'Email обязателен'),
   password: z.string().min(1, 'Пароль обязателен'),
   role: z.nativeEnum(UserRole, {
-    message: 'Роль должна быть одним из: USER, MODERATOR',
+    message: 'Роль должна быть одним из: USER, ADMIN',
   }).optional(),
   organisationId: z.number().int().positive('ID организации должен быть положительным числом').nullable().optional(),
 });
