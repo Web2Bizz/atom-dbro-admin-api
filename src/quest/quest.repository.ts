@@ -452,11 +452,12 @@ export class QuestRepository {
     }> | null;
   }): Promise<typeof quests.$inferSelect> {
     try {
-      const [quest] = await this.db
+      const result = await this.db
         .insert(quests)
         .values(data)
         .returning();
 
+      const quest = Array.isArray(result) ? result[0] : result;
       if (!quest) {
         throw new Error('Не удалось создать квест');
       }
@@ -488,7 +489,7 @@ export class QuestRepository {
     data: Partial<typeof quests.$inferInsert>,
   ): Promise<typeof quests.$inferSelect | undefined> {
     try {
-      const [quest] = await this.db
+      const result = await this.db
         .update(quests)
         .set({ ...data, updatedAt: new Date() })
         .where(and(
@@ -497,6 +498,7 @@ export class QuestRepository {
         ))
         .returning();
 
+      const quest = Array.isArray(result) ? result[0] : result;
       return quest;
     } catch (error: any) {
       this.logger.error(`Ошибка в update для квеста ID ${id}:`, error);
@@ -527,7 +529,7 @@ export class QuestRepository {
    */
   async softDelete(id: number): Promise<typeof quests.$inferSelect | undefined> {
     try {
-      const [quest] = await this.db
+      const result = await this.db
         .update(quests)
         .set({ recordStatus: 'DELETED', updatedAt: new Date() })
         .where(and(
@@ -536,6 +538,7 @@ export class QuestRepository {
         ))
         .returning();
 
+      const quest = Array.isArray(result) ? result[0] : result;
       return quest;
     } catch (error: any) {
       this.logger.error(`Ошибка в softDelete для квеста ID ${id}:`, error);
@@ -650,7 +653,7 @@ export class QuestRepository {
    */
   async createUserQuest(userId: number, questId: number, status: 'in_progress' | 'completed' | 'failed' = 'in_progress'): Promise<typeof userQuests.$inferSelect> {
     try {
-      const [userQuest] = await this.db
+      const result = await this.db
         .insert(userQuests)
         .values({
           userId,
@@ -659,6 +662,7 @@ export class QuestRepository {
         })
         .returning();
 
+      const userQuest = Array.isArray(result) ? result[0] : result;
       if (!userQuest) {
         throw new Error('Не удалось создать связь пользователь-квест');
       }
@@ -678,12 +682,13 @@ export class QuestRepository {
     data: Partial<typeof userQuests.$inferInsert>,
   ): Promise<typeof userQuests.$inferSelect | undefined> {
     try {
-      const [userQuest] = await this.db
+      const result = await this.db
         .update(userQuests)
         .set(data)
         .where(eq(userQuests.id, userQuestId))
         .returning();
 
+      const userQuest = Array.isArray(result) ? result[0] : result;
       return userQuest;
     } catch (error: any) {
       this.logger.error(`Ошибка в updateUserQuest для связи ID ${userQuestId}:`, error);
@@ -696,11 +701,12 @@ export class QuestRepository {
    */
   async deleteUserQuest(userQuestId: number): Promise<typeof userQuests.$inferSelect | undefined> {
     try {
-      const [userQuest] = await this.db
+      const result = await this.db
         .delete(userQuests)
         .where(eq(userQuests.id, userQuestId))
         .returning();
 
+      const userQuest = Array.isArray(result) ? result[0] : result;
       return userQuest;
     } catch (error: any) {
       this.logger.error(`Ошибка в deleteUserQuest для связи ID ${userQuestId}:`, error);
