@@ -1,4 +1,4 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
@@ -29,9 +29,30 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     if (isPublic) {
       return user || null;
     }
+    
+    // Если есть ошибка или пользователь отсутствует
     if (err || !user) {
-      throw err || new Error('Unauthorized');
+      // Если ошибка уже является HttpException (например, UnauthorizedException из JwtStrategy), пробрасываем её
+      if (err && (err.statusCode || err instanceof UnauthorizedException)) {
+        throw err;
+      }
+      
+      // Определяем сообщение об ошибке
+      let message = 'Необходима авторизация';
+      if (info?.message) {
+        message = info.message;
+      } else if (info?.name === 'JsonWebTokenError') {
+        message = 'Недействительный токен';
+      } else if (info?.name === 'TokenExpiredError') {
+        message = 'Токен истёк';
+      } else if (!user && !err) {
+        message = 'Токен не предоставлен или недействителен';
+      }
+      
+      // Всегда выбрасываем UnauthorizedException для корректного статуса 401
+      throw new UnauthorizedException(message);
     }
+    
     return user;
   }
 }
