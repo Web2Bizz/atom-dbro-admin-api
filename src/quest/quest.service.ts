@@ -1,12 +1,13 @@
 import { Injectable, Inject, NotFoundException, ConflictException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { quests, userQuests, users, achievements, userAchievements, cities, organizationTypes, categories, questCategories } from '../database/schema';
+import { quests, userQuests, users, achievements, userAchievements, cities, organizationTypes, categories } from '../database/schema';
 import { eq, and, ne, inArray } from 'drizzle-orm';
 import { CreateQuestDto } from './dto/create-quest.dto';
 import { UpdateQuestDto } from './dto/update-quest.dto';
 import { UpdateRequirementDto } from './dto/update-requirement.dto';
 import { QuestEventsService } from './quest.events';
+import { QuestRepository } from './quest.repository';
 
 @Injectable()
 export class QuestService {
@@ -16,6 +17,7 @@ export class QuestService {
     @Inject(DATABASE_CONNECTION)
     private db: NodePgDatabase,
     private questEventsService: QuestEventsService,
+    private questRepository: QuestRepository,
   ) {}
 
   async create(createQuestDto: CreateQuestDto, userId: number) {
@@ -110,30 +112,23 @@ export class QuestService {
       : city.longitude;
 
     // Создаем квест с привязкой к достижению (если указано) и владельцем
-    const questResult = await this.db
-      .insert(quests)
-      .values({
-        title: createQuestDto.title,
-        description: createQuestDto.description,
-        status: createQuestDto.status || 'active',
-        experienceReward: createQuestDto.experienceReward || 0,
-        achievementId: achievementId,
-        ownerId: userId,
-        cityId: createQuestDto.cityId,
-        organizationTypeId: createQuestDto.organizationTypeId,
-        latitude: latitude,
-        longitude: longitude,
-        address: createQuestDto.address,
-        contacts: createQuestDto.contacts,
-        coverImage: createQuestDto.coverImage,
-        gallery: createQuestDto.gallery,
-        steps: createQuestDto.steps,
-      })
-      .returning();
-    const quest = Array.isArray(questResult) ? questResult[0] : questResult;
-    if (!quest) {
-      throw new Error('Не удалось создать квест');
-    }
+    const quest = await this.questRepository.create({
+      title: createQuestDto.title,
+      description: createQuestDto.description,
+      status: createQuestDto.status || 'active',
+      experienceReward: createQuestDto.experienceReward || 0,
+      achievementId: achievementId,
+      ownerId: userId,
+      cityId: createQuestDto.cityId,
+      organizationTypeId: createQuestDto.organizationTypeId,
+      latitude: latitude,
+      longitude: longitude,
+      address: createQuestDto.address,
+      contacts: createQuestDto.contacts,
+      coverImage: createQuestDto.coverImage,
+      gallery: createQuestDto.gallery,
+      steps: createQuestDto.steps,
+    });
 
     // Обновляем достижение с questId (если достижение было создано)
     if (achievementId) {
@@ -145,96 +140,17 @@ export class QuestService {
 
     // Связываем квест с категориями, если указаны
     if (createQuestDto.categoryIds && createQuestDto.categoryIds.length > 0) {
-      await this.db
-        .insert(questCategories)
-        .values(
-          createQuestDto.categoryIds.map(categoryId => ({
-            questId: quest.id,
-            categoryId,
-          }))
-        );
+      await this.questRepository.createQuestCategories(quest.id, createQuestDto.categoryIds);
     }
 
-    // Возвращаем квест с информацией о достижении (если есть), городе, типе организации и категориях
-    const query = this.db
-      .select({
-        id: quests.id,
-        title: quests.title,
-        description: quests.description,
-        status: quests.status,
-        experienceReward: quests.experienceReward,
-        achievementId: quests.achievementId,
-        ownerId: quests.ownerId,
-        cityId: quests.cityId,
-        organizationTypeId: quests.organizationTypeId,
-        latitude: quests.latitude,
-        longitude: quests.longitude,
-        address: quests.address,
-        contacts: quests.contacts,
-        coverImage: quests.coverImage,
-        gallery: quests.gallery,
-        steps: quests.steps,
-        createdAt: quests.createdAt,
-        updatedAt: quests.updatedAt,
-        achievement: {
-          id: achievements.id,
-          title: achievements.title,
-          description: achievements.description,
-          icon: achievements.icon,
-          rarity: achievements.rarity,
-          questId: achievements.questId,
-        },
-        owner: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
-        },
-        city: {
-          id: cities.id,
-          name: cities.name,
-        },
-        organizationType: {
-          id: organizationTypes.id,
-          name: organizationTypes.name,
-        },
-      })
-      .from(quests)
-      .leftJoin(achievements, and(
-        eq(quests.achievementId, achievements.id),
-        ne(achievements.recordStatus, 'DELETED')
-      ))
-      .innerJoin(users, and(
-        eq(quests.ownerId, users.id),
-        ne(users.recordStatus, 'DELETED')
-      ))
-      .leftJoin(cities, and(
-        eq(quests.cityId, cities.id),
-        ne(cities.recordStatus, 'DELETED')
-      ))
-      .leftJoin(organizationTypes, and(
-        eq(quests.organizationTypeId, organizationTypes.id),
-        ne(organizationTypes.recordStatus, 'DELETED')
-      ))
-      .where(and(
-        eq(quests.id, quest.id),
-        ne(quests.recordStatus, 'DELETED')
-      ));
-    
-    const [questWithAchievement] = await query;
+    // Получаем квест с полными данными
+    const questWithAchievement = await this.questRepository.findById(quest.id);
+    if (!questWithAchievement) {
+      throw new Error('Не удалось получить созданный квест');
+    }
 
-    // Получаем категории для квеста (исключая удаленные)
-    const questCategoriesData = await this.db
-      .select({
-        id: categories.id,
-        name: categories.name,
-      })
-      .from(questCategories)
-      .innerJoin(categories, eq(questCategories.categoryId, categories.id))
-      .where(and(
-        eq(questCategories.questId, quest.id),
-        ne(categories.recordStatus, 'DELETED')
-      ));
+    // Получаем категории для квеста
+    const questCategoriesData = await this.questRepository.findCategoriesByQuestId(quest.id);
 
     const questWithAllData = {
       ...questWithAchievement,
@@ -242,15 +158,7 @@ export class QuestService {
     };
 
     // Автоматически присоединяем создателя к квесту
-    const userQuestResult = await this.db
-      .insert(userQuests)
-      .values({
-        userId,
-        questId: quest.id,
-        status: 'in_progress',
-      })
-      .returning();
-    const userQuest = Array.isArray(userQuestResult) ? userQuestResult[0] : userQuestResult;
+    const userQuest = await this.questRepository.createUserQuest(userId, quest.id, 'in_progress');
     
     if (userQuest) {
       // Получаем данные пользователя для события присоединения (исключая удаленные)
@@ -279,99 +187,11 @@ export class QuestService {
 
   async findAll(cityId?: number, categoryId?: number) {
     try {
-      let query = this.db
-        .select({
-          id: quests.id,
-          title: quests.title,
-          description: quests.description,
-          status: quests.status,
-          experienceReward: quests.experienceReward,
-          achievementId: quests.achievementId,
-          ownerId: quests.ownerId,
-          cityId: quests.cityId,
-          organizationTypeId: quests.organizationTypeId,
-          latitude: quests.latitude,
-          longitude: quests.longitude,
-          address: quests.address,
-          contacts: quests.contacts,
-          coverImage: quests.coverImage,
-          gallery: quests.gallery,
-          steps: quests.steps,
-          recordStatus: quests.recordStatus,
-          createdAt: quests.createdAt,
-          updatedAt: quests.updatedAt,
-          achievement: {
-            id: achievements.id,
-            title: achievements.title,
-            description: achievements.description,
-            icon: achievements.icon,
-            rarity: achievements.rarity,
-            questId: achievements.questId,
-          },
-          owner: {
-            id: users.id,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            email: users.email,
-          },
-          city: {
-            id: cities.id,
-            name: cities.name,
-          },
-          organizationType: {
-            id: organizationTypes.id,
-            name: organizationTypes.name,
-          },
-        })
-        .from(quests)
-        .leftJoin(achievements, and(
-          eq(quests.achievementId, achievements.id),
-          ne(achievements.recordStatus, 'DELETED')
-        ))
-        .innerJoin(users, and(
-          eq(quests.ownerId, users.id),
-          ne(users.recordStatus, 'DELETED')
-        ))
-        .leftJoin(cities, and(
-          eq(quests.cityId, cities.id),
-          ne(cities.recordStatus, 'DELETED')
-        ))
-        .leftJoin(organizationTypes, and(
-          eq(quests.organizationTypeId, organizationTypes.id),
-          ne(organizationTypes.recordStatus, 'DELETED')
-        ));
+      const questsList = await this.questRepository.findAll(cityId, categoryId);
 
-      // Применяем фильтры
-      const conditions = [];
-      if (cityId) {
-        conditions.push(eq(quests.cityId, cityId));
-      }
-      if (categoryId) {
-        query = query.innerJoin(questCategories, eq(quests.id, questCategories.questId)) as any;
-        conditions.push(eq(questCategories.categoryId, categoryId));
-      }
-      if (conditions.length > 0) {
-        query = query.where(and(...conditions)) as any;
-      }
-
-      const questsList = await query;
-
-      // Получаем категории для всех квестов (исключая удаленные)
+      // Получаем категории для всех квестов
       const questIds = questsList.map(q => q.id);
-      const allCategories = questIds.length > 0
-        ? await this.db
-            .select({
-              questId: questCategories.questId,
-              id: categories.id,
-              name: categories.name,
-            })
-            .from(questCategories)
-            .innerJoin(categories, eq(questCategories.categoryId, categories.id))
-            .where(and(
-              inArray(questCategories.questId, questIds),
-              ne(categories.recordStatus, 'DELETED')
-            ))
-        : [];
+      const allCategories = await this.questRepository.findCategoriesByQuestIds(questIds);
 
       // Группируем категории по questId
       const categoriesByQuestId = new Map<number, Array<{ id: number; name: string }>>();
@@ -404,80 +224,11 @@ export class QuestService {
   }
 
   async findByStatus(status?: 'active' | 'archived' | 'completed', cityId?: number, categoryId?: number) {
-    let baseQuery = this.db
-      .select({
-        id: quests.id,
-        title: quests.title,
-        description: quests.description,
-        status: quests.status,
-        experienceReward: quests.experienceReward,
-        achievementId: quests.achievementId,
-        ownerId: quests.ownerId,
-        createdAt: quests.createdAt,
-        updatedAt: quests.updatedAt,
-        achievement: {
-          id: achievements.id,
-          title: achievements.title,
-          description: achievements.description,
-          icon: achievements.icon,
-          rarity: achievements.rarity,
-          questId: achievements.questId,
-        },
-        owner: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
-        },
-      })
-      .from(quests)
-      .leftJoin(achievements, and(
-        eq(quests.achievementId, achievements.id),
-        ne(achievements.recordStatus, 'DELETED')
-      ))
-      .innerJoin(users, and(
-        eq(quests.ownerId, users.id),
-        ne(users.recordStatus, 'DELETED')
-      ))
-      .leftJoin(cities, and(
-        eq(quests.cityId, cities.id),
-        ne(cities.recordStatus, 'DELETED')
-      ));
-    
-    // Применяем фильтры
-    const conditions = [ne(quests.recordStatus, 'DELETED')];
-    if (status) {
-      conditions.push(eq(quests.status, status));
-    }
-    if (cityId) {
-      conditions.push(eq(quests.cityId, cityId));
-    }
-    if (categoryId) {
-      baseQuery = baseQuery.innerJoin(questCategories, eq(quests.id, questCategories.questId)) as any;
-      conditions.push(eq(questCategories.categoryId, categoryId));
-    }
-    if (conditions.length > 0) {
-      baseQuery = baseQuery.where(conditions.length === 1 ? conditions[0] : and(...conditions)) as any;
-    }
+    const questsList = await this.questRepository.findByStatus(status, cityId, categoryId);
 
-    const questsList = await baseQuery;
-
-    // Получаем категории для всех квестов (исключая удаленные)
+    // Получаем категории для всех квестов
     const questIds = questsList.map(q => q.id);
-    const allCategories = questIds.length > 0
-      ? await this.db
-          .select({
-            questId: questCategories.questId,
-            id: categories.id,
-            name: categories.name,
-          })
-          .from(questCategories)
-          .innerJoin(categories, eq(questCategories.categoryId, categories.id))
-          .where(and(
-            inArray(questCategories.questId, questIds),
-            ne(categories.recordStatus, 'DELETED')
-          ))
-      : [];
+    const allCategories = await this.questRepository.findCategoriesByQuestIds(questIds);
 
     // Группируем категории по questId
     const categoriesByQuestId = new Map<number, Array<{ id: number; name: string }>>();
@@ -498,86 +249,13 @@ export class QuestService {
   }
 
   async findOne(id: number) {
-    const [quest] = await this.db
-      .select({
-        id: quests.id,
-        title: quests.title,
-        description: quests.description,
-        status: quests.status,
-        experienceReward: quests.experienceReward,
-        achievementId: quests.achievementId,
-        ownerId: quests.ownerId,
-        cityId: quests.cityId,
-        organizationTypeId: quests.organizationTypeId,
-        latitude: quests.latitude,
-        longitude: quests.longitude,
-        address: quests.address,
-        contacts: quests.contacts,
-        coverImage: quests.coverImage,
-        gallery: quests.gallery,
-        steps: quests.steps,
-        createdAt: quests.createdAt,
-        updatedAt: quests.updatedAt,
-        achievement: {
-          id: achievements.id,
-          title: achievements.title,
-          description: achievements.description,
-          icon: achievements.icon,
-          rarity: achievements.rarity,
-          questId: achievements.questId,
-        },
-        owner: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
-        },
-        city: {
-          id: cities.id,
-          name: cities.name,
-        },
-        organizationType: {
-          id: organizationTypes.id,
-          name: organizationTypes.name,
-        },
-      })
-      .from(quests)
-      .leftJoin(achievements, and(
-        eq(quests.achievementId, achievements.id),
-        ne(achievements.recordStatus, 'DELETED')
-      ))
-      .innerJoin(users, and(
-        eq(quests.ownerId, users.id),
-        ne(users.recordStatus, 'DELETED')
-      ))
-      .leftJoin(cities, and(
-        eq(quests.cityId, cities.id),
-        ne(cities.recordStatus, 'DELETED')
-      ))
-      .leftJoin(organizationTypes, and(
-        eq(quests.organizationTypeId, organizationTypes.id),
-        ne(organizationTypes.recordStatus, 'DELETED')
-      ))
-      .where(and(
-        eq(quests.id, id),
-        ne(quests.recordStatus, 'DELETED')
-      ));
+    const quest = await this.questRepository.findById(id);
     if (!quest) {
       throw new NotFoundException(`Квест с ID ${id} не найден`);
     }
 
-    // Получаем категории для квеста (исключая удаленные)
-    const questCategoriesData = await this.db
-      .select({
-        id: categories.id,
-        name: categories.name,
-      })
-      .from(questCategories)
-      .innerJoin(categories, eq(questCategories.categoryId, categories.id))
-      .where(and(
-        eq(questCategories.questId, id),
-        ne(categories.recordStatus, 'DELETED')
-      ));
+    // Получаем категории для квеста
+    const questCategoriesData = await this.questRepository.findCategoriesByQuestId(id);
 
     return {
       ...quest,
@@ -586,14 +264,8 @@ export class QuestService {
   }
 
   async update(id: number, updateQuestDto: UpdateQuestDto) {
-    // Проверяем существование квеста (исключая удаленные)
-    const [existingQuest] = await this.db
-      .select()
-      .from(quests)
-      .where(and(
-        eq(quests.id, id),
-        ne(quests.recordStatus, 'DELETED')
-      ));
+    // Проверяем существование квеста
+    const existingQuest = await this.questRepository.findByIdBasic(id);
     if (!existingQuest) {
       throw new NotFoundException(`Квест с ID ${id} не найден`);
     }
@@ -735,15 +407,7 @@ export class QuestService {
       updateData.steps = updateQuestDto.steps;
     }
 
-    const result = await this.db
-      .update(quests)
-      .set(updateData)
-      .where(and(
-        eq(quests.id, id),
-        ne(quests.recordStatus, 'DELETED')
-      ))
-      .returning();
-    const quest = Array.isArray(result) ? result[0] : result;
+    const quest = await this.questRepository.update(id, updateData);
     if (!quest) {
       throw new NotFoundException(`Квест с ID ${id} не найден`);
     }
@@ -757,9 +421,7 @@ export class QuestService {
     // Обновляем категории, если указаны
     if (updateQuestDto.categoryIds !== undefined) {
       // Удаляем старые связи
-      await this.db
-        .delete(questCategories)
-        .where(eq(questCategories.questId, id));
+      await this.questRepository.deleteQuestCategories(id);
 
       // Проверяем существование категорий, если указаны (исключая удаленные)
       if (updateQuestDto.categoryIds.length > 0) {
@@ -775,14 +437,7 @@ export class QuestService {
         }
 
         // Создаем новые связи
-        await this.db
-          .insert(questCategories)
-          .values(
-            updateQuestDto.categoryIds.map(categoryId => ({
-              questId: id,
-              categoryId,
-            }))
-          );
+        await this.questRepository.createQuestCategories(id, updateQuestDto.categoryIds);
       }
     }
 
@@ -791,15 +446,7 @@ export class QuestService {
   }
 
   async remove(id: number) {
-    const result = await this.db
-      .update(quests)
-      .set({ recordStatus: 'DELETED', updatedAt: new Date() })
-      .where(and(
-        eq(quests.id, id),
-        ne(quests.recordStatus, 'DELETED')
-      ))
-      .returning();
-    const quest = Array.isArray(result) ? result[0] : result;
+    const quest = await this.questRepository.softDelete(id);
     if (!quest) {
       throw new NotFoundException(`Квест с ID ${id} не найден`);
     }
@@ -818,13 +465,7 @@ export class QuestService {
       throw new NotFoundException(`Пользователь с ID ${userId} не найден`);
     }
 
-    const [quest] = await this.db
-      .select()
-      .from(quests)
-      .where(and(
-        eq(quests.id, questId),
-        ne(quests.recordStatus, 'DELETED')
-      ));
+    const quest = await this.questRepository.findByIdBasic(questId);
     if (!quest) {
       throw new NotFoundException(`Квест с ID ${questId} не найден`);
     }
@@ -833,31 +474,12 @@ export class QuestService {
       throw new BadRequestException('Квест не доступен для выполнения');
     }
 
-    const [existingUserQuest] = await this.db
-      .select()
-      .from(userQuests)
-      .where(
-        and(
-          eq(userQuests.userId, userId),
-          eq(userQuests.questId, questId),
-        ),
-      );
+    const existingUserQuest = await this.questRepository.findUserQuest(userId, questId);
     if (existingUserQuest) {
       throw new ConflictException('Пользователь уже присоединился к этому квесту');
     }
 
-    const result = await this.db
-      .insert(userQuests)
-      .values({
-        userId,
-        questId,
-        status: 'in_progress',
-      })
-      .returning();
-    const userQuest = Array.isArray(result) ? result[0] : result;
-    if (!userQuest) {
-      throw new Error('Не удалось присоединиться к квесту');
-    }
+    const userQuest = await this.questRepository.createUserQuest(userId, questId, 'in_progress');
 
     const [userData] = await this.db
       .select({
@@ -890,28 +512,14 @@ export class QuestService {
       throw new NotFoundException(`Пользователь с ID ${userId} не найден`);
     }
 
-    // Проверяем существование квеста (исключая удаленные)
-    const [quest] = await this.db
-      .select()
-      .from(quests)
-      .where(and(
-        eq(quests.id, questId),
-        ne(quests.recordStatus, 'DELETED')
-      ));
+    // Проверяем существование квеста
+    const quest = await this.questRepository.findByIdBasic(questId);
     if (!quest) {
       throw new NotFoundException(`Квест с ID ${questId} не найден`);
     }
 
     // Проверяем, что пользователь участвует в квесте
-    const [userQuest] = await this.db
-      .select()
-      .from(userQuests)
-      .where(
-        and(
-          eq(userQuests.userId, userId),
-          eq(userQuests.questId, questId),
-        ),
-      );
+    const userQuest = await this.questRepository.findUserQuest(userId, questId);
     if (!userQuest) {
       throw new NotFoundException('Пользователь не участвует в этом квесте');
     }
@@ -922,11 +530,7 @@ export class QuestService {
     }
 
     // Удаляем запись о участии в квесте
-    const result = await this.db
-      .delete(userQuests)
-      .where(eq(userQuests.id, userQuest.id))
-      .returning();
-    const deletedUserQuest = Array.isArray(result) ? result[0] : result;
+    const deletedUserQuest = await this.questRepository.deleteUserQuest(userQuest.id);
     if (!deletedUserQuest) {
       throw new Error('Не удалось покинуть квест');
     }
@@ -947,28 +551,14 @@ export class QuestService {
       throw new NotFoundException(`Пользователь с ID ${userId} не найден`);
     }
 
-    // Проверяем существование квеста (исключая удаленные)
-    const [quest] = await this.db
-      .select()
-      .from(quests)
-      .where(and(
-        eq(quests.id, questId),
-        ne(quests.recordStatus, 'DELETED')
-      ));
+    // Проверяем существование квеста
+    const quest = await this.questRepository.findByIdBasic(questId);
     if (!quest) {
       throw new NotFoundException(`Квест с ID ${questId} не найден`);
     }
 
     // Проверяем, что квест начат пользователем
-    const [userQuest] = await this.db
-      .select()
-      .from(userQuests)
-      .where(
-        and(
-          eq(userQuests.userId, userId),
-          eq(userQuests.questId, questId),
-        ),
-      );
+    const userQuest = await this.questRepository.findUserQuest(userId, questId);
     if (!userQuest) {
       throw new NotFoundException('Пользователь не начал этот квест');
     }
@@ -978,15 +568,10 @@ export class QuestService {
     }
 
     // Завершаем квест
-    const result = await this.db
-      .update(userQuests)
-      .set({
-        status: 'completed',
-        completedAt: new Date(),
-      })
-      .where(eq(userQuests.id, userQuest.id))
-      .returning();
-    const completedQuest = Array.isArray(result) ? result[0] : result;
+    const completedQuest = await this.questRepository.updateUserQuest(userQuest.id, {
+      status: 'completed',
+      completedAt: new Date(),
+    });
     if (!completedQuest) {
       throw new Error('Не удалось завершить квест');
     }
@@ -1051,74 +636,12 @@ export class QuestService {
       throw new NotFoundException(`Пользователь с ID ${userId} не найден`);
     }
 
-    // Получаем все квесты пользователя с информацией о квесте и достижении (исключая удаленные)
-    const result = await this.db
-      .select({
-        id: userQuests.id,
-        userId: userQuests.userId,
-        questId: userQuests.questId,
-        status: userQuests.status,
-        startedAt: userQuests.startedAt,
-        completedAt: userQuests.completedAt,
-        quest: {
-          id: quests.id,
-          title: quests.title,
-          description: quests.description,
-          status: quests.status,
-          experienceReward: quests.experienceReward,
-          achievementId: quests.achievementId,
-          ownerId: quests.ownerId,
-          cityId: quests.cityId,
-          coverImage: quests.coverImage,
-          gallery: quests.gallery,
-          steps: quests.steps,
-          createdAt: quests.createdAt,
-          updatedAt: quests.updatedAt,
-        },
-        achievement: {
-          id: achievements.id,
-          title: achievements.title,
-          description: achievements.description,
-          icon: achievements.icon,
-          rarity: achievements.rarity,
-          questId: achievements.questId,
-        },
-        city: {
-          id: cities.id,
-          name: cities.name,
-        },
-      })
-      .from(userQuests)
-      .innerJoin(quests, and(
-        eq(userQuests.questId, quests.id),
-        ne(quests.recordStatus, 'DELETED')
-      ))
-      .leftJoin(achievements, and(
-        eq(quests.achievementId, achievements.id),
-        ne(achievements.recordStatus, 'DELETED')
-      ))
-      .leftJoin(cities, and(
-        eq(quests.cityId, cities.id),
-        ne(cities.recordStatus, 'DELETED')
-      ))
-      .where(eq(userQuests.userId, userId));
+    // Получаем все квесты пользователя
+    const result = await this.questRepository.findUserQuestsByUserId(userId);
 
-    // Получаем категории для всех квестов (исключая удаленные)
+    // Получаем категории для всех квестов
     const questIds = result.map(r => r.questId);
-    const allCategories = questIds.length > 0
-      ? await this.db
-          .select({
-            questId: questCategories.questId,
-            id: categories.id,
-            name: categories.name,
-          })
-          .from(questCategories)
-          .innerJoin(categories, eq(questCategories.categoryId, categories.id))
-          .where(and(
-            inArray(questCategories.questId, questIds),
-            ne(categories.recordStatus, 'DELETED')
-          ))
-      : [];
+    const allCategories = await this.questRepository.findCategoriesByQuestIds(questIds);
 
     const categoriesByQuestId = new Map<number, Array<{ id: number; name: string }>>();
     for (const category of allCategories) {
@@ -1153,86 +676,19 @@ export class QuestService {
       throw new NotFoundException(`Пользователь с ID ${userId} не найден`);
     }
 
-    // Получаем все активные квесты с информацией о достижении (исключая удаленные)
-    const activeQuests = await this.db
-      .select({
-        id: quests.id,
-        title: quests.title,
-        description: quests.description,
-        status: quests.status,
-        experienceReward: quests.experienceReward,
-        achievementId: quests.achievementId,
-        ownerId: quests.ownerId,
-        cityId: quests.cityId,
-        coverImage: quests.coverImage,
-        gallery: quests.gallery,
-        steps: quests.steps,
-        createdAt: quests.createdAt,
-        updatedAt: quests.updatedAt,
-        achievement: {
-          id: achievements.id,
-          title: achievements.title,
-          description: achievements.description,
-          icon: achievements.icon,
-          rarity: achievements.rarity,
-          questId: achievements.questId,
-        },
-        owner: {
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          email: users.email,
-        },
-        city: {
-          id: cities.id,
-          name: cities.name,
-        },
-      })
-      .from(quests)
-      .leftJoin(achievements, and(
-        eq(quests.achievementId, achievements.id),
-        ne(achievements.recordStatus, 'DELETED')
-      ))
-      .innerJoin(users, and(
-        eq(quests.ownerId, users.id),
-        ne(users.recordStatus, 'DELETED')
-      ))
-      .leftJoin(cities, and(
-        eq(quests.cityId, cities.id),
-        ne(cities.recordStatus, 'DELETED')
-      ))
-      .where(and(
-        eq(quests.status, 'active'),
-        ne(quests.recordStatus, 'DELETED')
-      ));
+    // Получаем все активные квесты
+    const activeQuests = await this.questRepository.findActiveQuests();
 
     // Получаем квесты, которые пользователь уже начал
-    const userStartedQuests = await this.db
-      .select({ questId: userQuests.questId })
-      .from(userQuests)
-      .where(eq(userQuests.userId, userId));
-
-    const startedQuestIds = new Set(userStartedQuests.map(uq => uq.questId));
+    const startedQuestIds = await this.questRepository.findStartedQuestIdsByUserId(userId);
+    const startedQuestIdsSet = new Set(startedQuestIds);
 
     // Фильтруем квесты, которые пользователь еще не начал
-    const filteredQuests = activeQuests.filter(quest => !startedQuestIds.has(quest.id));
+    const filteredQuests = activeQuests.filter(quest => !startedQuestIdsSet.has(quest.id));
 
-    // Получаем категории для всех квестов (исключая удаленные)
+    // Получаем категории для всех квестов
     const questIds = filteredQuests.map(q => q.id);
-    const allCategories = questIds.length > 0
-      ? await this.db
-          .select({
-            questId: questCategories.questId,
-            id: categories.id,
-            name: categories.name,
-          })
-          .from(questCategories)
-          .innerJoin(categories, eq(questCategories.categoryId, categories.id))
-          .where(and(
-            inArray(questCategories.questId, questIds),
-            ne(categories.recordStatus, 'DELETED')
-          ))
-      : [];
+    const allCategories = await this.questRepository.findCategoriesByQuestIds(questIds);
 
     // Группируем категории по questId
     const categoriesByQuestId = new Map<number, Array<{ id: number; name: string }>>();
@@ -1257,14 +713,8 @@ export class QuestService {
     stepIndex: number,
     updateRequirementDto: UpdateRequirementDto,
   ) {
-    // Проверяем существование квеста (исключая удаленные)
-    const [quest] = await this.db
-      .select()
-      .from(quests)
-      .where(and(
-        eq(quests.id, questId),
-        ne(quests.recordStatus, 'DELETED')
-      ));
+    // Проверяем существование квеста
+    const quest = await this.questRepository.findByIdBasic(questId);
     
     if (!quest) {
       throw new NotFoundException(`Квест с ID ${questId} не найден`);
@@ -1325,19 +775,10 @@ export class QuestService {
     };
 
     // Обновляем квест в базе данных
-    const result = await this.db
-      .update(quests)
-      .set({
-        steps: updatedSteps,
-        updatedAt: new Date(),
-      })
-      .where(and(
-        eq(quests.id, questId),
-        ne(quests.recordStatus, 'DELETED')
-      ))
-      .returning();
+    const updatedQuest = await this.questRepository.update(questId, {
+      steps: updatedSteps,
+    });
     
-    const updatedQuest = Array.isArray(result) ? result[0] : result;
     if (!updatedQuest) {
       throw new NotFoundException(`Квест с ID ${questId} не найден`);
     }
@@ -1348,6 +789,40 @@ export class QuestService {
 
     // Возвращаем обновленный квест с полной информацией
     return this.findOne(questId);
+  }
+
+  async archiveQuest(id: number) {
+    // Проверяем существование квеста
+    const existingQuest = await this.questRepository.findByIdBasic(id);
+    if (!existingQuest) {
+      throw new NotFoundException(`Квест с ID ${id} не найден`);
+    }
+
+    // Обновляем статус на 'archived'
+    const quest = await this.questRepository.updateStatus(id, 'archived');
+    if (!quest) {
+      throw new NotFoundException(`Квест с ID ${id} не найден`);
+    }
+
+    // Возвращаем обновленный квест с полной информацией
+    return this.findOne(id);
+  }
+
+  async unarchiveQuest(id: number) {
+    // Проверяем существование квеста
+    const existingQuest = await this.questRepository.findByIdBasic(id);
+    if (!existingQuest) {
+      throw new NotFoundException(`Квест с ID ${id} не найден`);
+    }
+
+    // Обновляем статус на 'active'
+    const quest = await this.questRepository.updateStatus(id, 'active');
+    if (!quest) {
+      throw new NotFoundException(`Квест с ID ${id} не найден`);
+    }
+
+    // Возвращаем обновленный квест с полной информацией
+    return this.findOne(id);
   }
 }
 

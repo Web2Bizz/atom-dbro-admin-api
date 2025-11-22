@@ -252,5 +252,27 @@ export class QuestController {
   ) {
     return this.questService.updateRequirementCurrentValue(questId, stepIndex, updateRequirementDto);
   }
+
+  @Patch(':id/archive')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Архивировать квест' })
+  @ApiResponse({ status: 200, description: 'Квест успешно архивирован' })
+  @ApiResponse({ status: 401, description: 'Не авторизован' })
+  @ApiResponse({ status: 404, description: 'Квест не найден' })
+  archiveQuest(@Param('id', ParseIntPipe) id: number) {
+    return this.questService.archiveQuest(id);
+  }
+
+  @Patch(':id/unarchive')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Разархивировать квест' })
+  @ApiResponse({ status: 200, description: 'Квест успешно разархивирован' })
+  @ApiResponse({ status: 401, description: 'Не авторизован' })
+  @ApiResponse({ status: 404, description: 'Квест не найден' })
+  unarchiveQuest(@Param('id', ParseIntPipe) id: number) {
+    return this.questService.unarchiveQuest(id);
+  }
 }
 
