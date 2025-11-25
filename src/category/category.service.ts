@@ -35,7 +35,10 @@ export class CategoryService {
   }
 
   async findAll() {
-    return this.db.select().from(categories);
+    return this.db
+      .select()
+      .from(categories)
+      .where(ne(categories.recordStatus, 'DELETED'));
   }
 
   async findOne(id: number) {

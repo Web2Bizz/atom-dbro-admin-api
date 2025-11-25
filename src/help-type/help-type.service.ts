@@ -34,7 +34,10 @@ export class HelpTypeService {
   }
 
   async findAll() {
-    return this.db.select().from(helpTypes);
+    return this.db
+      .select()
+      .from(helpTypes)
+      .where(ne(helpTypes.recordStatus, 'DELETED'));
   }
 
   async findOne(id: number) {

@@ -44,14 +44,14 @@ export class QuestUpdateService {
   }
 
   async findAll(questId?: number) {
-    const conditions = [];
+    const conditions = [ne(questUpdates.recordStatus, 'DELETED')];
     if (questId) {
       conditions.push(eq(questUpdates.questId, questId));
     }
     return this.db
       .select()
       .from(questUpdates)
-      .where(conditions.length > 0 ? and(...conditions) : undefined);
+      .where(and(...conditions));
   }
 
   async findOne(id: number) {

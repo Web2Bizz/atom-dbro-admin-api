@@ -258,7 +258,7 @@ export class QuestRepository {
           ne(organizationTypes.recordStatus, 'DELETED')
         ));
 
-      const conditions = [];
+      const conditions = [ne(quests.recordStatus, 'DELETED')];
       if (cityId) {
         conditions.push(eq(quests.cityId, cityId));
       }
@@ -266,9 +266,7 @@ export class QuestRepository {
         query = query.innerJoin(questCategories, eq(quests.id, questCategories.questId)) as any;
         conditions.push(eq(questCategories.categoryId, categoryId));
       }
-      if (conditions.length > 0) {
-        query = query.where(and(...conditions)) as any;
-      }
+      query = query.where(and(...conditions)) as any;
 
       return await query as QuestWithRelations[];
     } catch (error: any) {
