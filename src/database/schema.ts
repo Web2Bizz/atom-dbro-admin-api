@@ -192,6 +192,20 @@ export const questUpdates = pgTable('quest_updates', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+// Обновления организаций
+export const organizationUpdates = pgTable('organization_updates', {
+  id: serial('id').primaryKey(),
+  organizationId: integer('organization_id')
+    .references(() => organizations.id)
+    .notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  text: text('text').notNull(),
+  photos: jsonb('photos').$type<string[]>(),
+  recordStatus: varchar('record_status', { length: 20 }).default('CREATED').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 // Связующая таблица: выполнение квестов пользователями
 export const userQuests = pgTable('user_quests', {
   id: serial('id').primaryKey(),
@@ -257,6 +271,7 @@ export const organizationsRelations = relations(organizations, ({ one, many }) =
   }),
   owners: many(organizationOwners),
   helpTypes: many(organizationHelpTypes),
+  updates: many(organizationUpdates),
 }));
 
 export const organizationOwnersRelations = relations(organizationOwners, ({ one }) => ({
@@ -337,6 +352,13 @@ export const questUpdatesRelations = relations(questUpdates, ({ one }) => ({
   quest: one(quests, {
     fields: [questUpdates.questId],
     references: [quests.id],
+  }),
+}));
+
+export const organizationUpdatesRelations = relations(organizationUpdates, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [organizationUpdates.organizationId],
+    references: [organizations.id],
   }),
 }));
 
