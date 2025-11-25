@@ -1,4 +1,4 @@
-import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ExecutionContext, Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
@@ -51,6 +51,11 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       
       // Всегда выбрасываем UnauthorizedException для корректного статуса 401
       throw new UnauthorizedException(message);
+    }
+    
+    // Проверяем, что пользователь имеет роль ADMIN
+    if (user.role !== 'ADMIN') {
+      throw new BadRequestException('Доступ разрешен только администраторам');
     }
     
     return user;

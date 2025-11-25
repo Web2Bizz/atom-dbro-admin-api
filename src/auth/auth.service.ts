@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, Logger } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -48,7 +48,7 @@ export class AuthService {
 
       // Проверяем, что пользователь имеет роль ADMIN
       if (user.role !== 'ADMIN') {
-        throw new UnauthorizedException('Доступ разрешен только администраторам');
+        throw new BadRequestException('Доступ разрешен только администраторам');
       }
 
       const payload = { email: user.email, sub: user.id };
@@ -89,7 +89,7 @@ export class AuthService {
 
       // Проверяем, что пользователь имеет роль ADMIN
       if (user.role !== 'ADMIN') {
-        throw new UnauthorizedException('Доступ разрешен только администраторам');
+        throw new BadRequestException('Доступ разрешен только администраторам');
       }
 
       const newPayload = { email: user.email, sub: user.id };
