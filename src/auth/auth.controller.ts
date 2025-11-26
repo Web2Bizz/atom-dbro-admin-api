@@ -18,10 +18,10 @@ export class AuthController {
   @Post('login')
   @UseInterceptors(LoginLoggingInterceptor)
   @ZodValidation(loginSchema)
-  @ApiOperation({ summary: 'Вход пользователя' })
+  @ApiOperation({ summary: 'Вход пользователя (только для администраторов)' })
   @ApiBody({ type: LoginDtoClass })
   @ApiResponse({ status: 200, description: 'Успешный вход', type: LoginDtoClass })
-  @ApiResponse({ status: 401, description: 'Неверный email или пароль' })
+  @ApiResponse({ status: 401, description: 'Неверный email или пароль, либо недостаточно прав' })
   login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }

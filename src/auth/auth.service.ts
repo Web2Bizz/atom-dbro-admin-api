@@ -48,7 +48,7 @@ export class AuthService {
 
       // Проверяем, что пользователь имеет роль ADMIN
       if (user.role !== 'ADMIN') {
-        throw new BadRequestException('Доступ разрешен только администраторам');
+        throw new UnauthorizedException('Доступ разрешен только администраторам');
       }
 
       const payload = { email: user.email, sub: user.id };
@@ -72,6 +72,8 @@ export class AuthService {
       };
     } catch (error) {
       this.logger.error(error);
+      // Пробрасываем ошибку дальше, чтобы она вернулась клиенту
+      throw error;
     }
   }
 
@@ -89,7 +91,7 @@ export class AuthService {
 
       // Проверяем, что пользователь имеет роль ADMIN
       if (user.role !== 'ADMIN') {
-        throw new BadRequestException('Доступ разрешен только администраторам');
+        throw new UnauthorizedException('Доступ разрешен только администраторам');
       }
 
       const newPayload = { email: user.email, sub: user.id };
