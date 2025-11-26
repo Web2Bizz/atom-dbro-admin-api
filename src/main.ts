@@ -4,6 +4,7 @@ import { VersioningType, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { json } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { PrometheusInterceptor } from './prometheus/prometheus.interceptor';
 
 async function bootstrap() {
   try {
@@ -83,6 +84,10 @@ async function bootstrap() {
     });
 
     app.setGlobalPrefix('admin/api');
+
+    // Глобальный interceptor для сбора метрик Prometheus
+    const prometheusInterceptor = app.get(PrometheusInterceptor);
+    app.useGlobalInterceptors(prometheusInterceptor);
 
     const config = new DocumentBuilder()
       .setTitle('Atom DBRO Admin Backend API')

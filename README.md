@@ -79,6 +79,31 @@ http://localhost:3000/admin/api/metrics
 - Путь `PROMETHEUS_PATH` указывается относительно корня приложения, но с учетом глобального префикса `admin/api`
 - Для доступа к метрикам без префикса установите `PROMETHEUS_PATH=/metrics` и используйте `http://localhost:3000/metrics`
 
+**Доступные метрики:**
+
+Приложение автоматически собирает следующие кастомные метрики:
+
+1. **`http_requests_total`** - Общее количество HTTP запросов
+   - Метки: `method` (HTTP метод), `route` (маршрут), `status_code` (код ответа)
+   
+2. **`http_request_duration_seconds`** - Длительность HTTP запросов в секундах
+   - Метки: `method` (HTTP метод), `route` (маршрут)
+   - Бакеты: 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10 секунд
+   
+3. **`http_errors_total`** - Общее количество HTTP ошибок
+   - Метки: `method` (HTTP метод), `route` (маршрут), `status_code` (код ошибки), `error_type` (тип ошибки)
+
+4. **`login_attempts_total`** - Общее количество попыток входа
+   - Метки: `status` (success/failure), `reason` (invalid_credentials, user_not_found, user_blocked, unauthorized, unknown)
+   
+5. **`login_duration_seconds`** - Длительность попыток входа в секундах
+   - Метки: `status` (success/failure)
+   - Бакеты: 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5 секунд
+
+Все метрики автоматически собираются:
+- HTTP метрики (1-3) - для всех HTTP запросов через глобальный interceptor
+- Метрики входа (4-5) - для попыток входа через LoginLoggingInterceptor
+
 ## Запуск
 
 ```bash

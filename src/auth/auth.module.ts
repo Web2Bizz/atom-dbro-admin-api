@@ -7,11 +7,13 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenGuard } from './guards/refresh-token.guard';
 import { UserModule } from '../user/user.module';
+import { PrometheusModule } from '../prometheus/prometheus.module';
 
 @Module({
   imports: [
     UserModule,
     PassportModule,
+    PrometheusModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

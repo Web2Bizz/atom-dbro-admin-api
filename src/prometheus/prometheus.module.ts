@@ -1,6 +1,15 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrometheusModule as PrometheusModuleLib } from '@willsoto/nestjs-prometheus';
+import { PrometheusService } from './prometheus.service';
+import { PrometheusInterceptor } from './prometheus.interceptor';
+import {
+  httpRequestsTotal,
+  httpRequestDuration,
+  httpErrorsTotal,
+  loginAttemptsTotal,
+  loginDuration,
+} from './prometheus.metrics';
 
 @Module({
   imports: [
@@ -33,7 +42,16 @@ import { PrometheusModule as PrometheusModuleLib } from '@willsoto/nestjs-promet
       inject: [ConfigService],
     }),
   ],
-  exports: [PrometheusModuleLib],
+  providers: [
+    httpRequestsTotal,
+    httpRequestDuration,
+    httpErrorsTotal,
+    loginAttemptsTotal,
+    loginDuration,
+    PrometheusService,
+    PrometheusInterceptor,
+  ],
+  exports: [PrometheusModuleLib, PrometheusService, PrometheusInterceptor],
 })
 export class PrometheusModule {}
 
