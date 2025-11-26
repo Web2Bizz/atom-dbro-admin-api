@@ -4,7 +4,7 @@ import { PrometheusModule as PrometheusModuleLib } from '@willsoto/nestjs-promet
 
 @Module({
   imports: [
-    PrometheusModuleLib.forRootAsync({
+    PrometheusModuleLib.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
         const enabled = configService.get<string>('PROMETHEUS_ENABLED', 'true') === 'true';
