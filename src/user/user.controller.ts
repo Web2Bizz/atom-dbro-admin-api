@@ -18,6 +18,7 @@ import { UpdateUserV2Dto, updateUserV2Schema, UpdateUserV2DtoClass } from './dto
 import { ChangePasswordDto, changePasswordSchema, ChangePasswordDtoClass } from './dto/change-password.dto';
 import { ZodValidation } from '../common/decorators/zod-validation.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminGuard } from '../auth/guards/admin.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Пользователи')
@@ -37,11 +38,11 @@ export class UserController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Получить всех пользователей' })
   @ApiResponse({ status: 200, description: 'Список пользователей' })
-  @ApiResponse({ status: 401, description: 'Не авторизован' })
+  @ApiResponse({ status: 401, description: 'Не авторизован или недостаточно прав' })
   findAll() {
     return this.userService.findAll();
   }
@@ -63,12 +64,12 @@ export class UserController {
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Получить пользователя по ID' })
   @ApiResponse({ status: 200, description: 'Пользователь найден' })
   @ApiResponse({ status: 404, description: 'Пользователь не найден' })
-  @ApiResponse({ status: 401, description: 'Не авторизован' })
+  @ApiResponse({ status: 401, description: 'Не авторизован или недостаточно прав' })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.userService.findOne(id);
   }
@@ -104,12 +105,12 @@ export class UserController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AdminGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Удалить пользователя' })
   @ApiResponse({ status: 200, description: 'Пользователь удален' })
   @ApiResponse({ status: 404, description: 'Пользователь не найден' })
-  @ApiResponse({ status: 401, description: 'Не авторизован' })
+  @ApiResponse({ status: 401, description: 'Не авторизован или недостаточно прав' })
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.userService.remove(id);
   }
