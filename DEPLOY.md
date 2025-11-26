@@ -55,6 +55,12 @@ S3_REGION=us-east-1
 # S3_ENDPOINT=https://s3.ru1.storage.beget.cloud
 # S3_PUBLIC_URL_TEMPLATE=https://{bucket}.s3.{region}.amazonaws.com/{key}
 # S3_FORCE_PATH_STYLE=true
+
+# Prometheus метрики (опционально)
+# PROMETHEUS_ENABLED=true
+# PROMETHEUS_PATH=/metrics
+# PROMETHEUS_DEFAULT_METRICS=true
+# PROMETHEUS_DEFAULT_LABELS={"app":"atom-dbro","env":"production"}
 ```
 
 **⚠️ ВАЖНО**: 
@@ -417,6 +423,12 @@ S3_BUCKET_NAME=your-bucket-name
 S3_ACCESS_KEY_ID=your-access-key-id
 S3_SECRET_ACCESS_KEY=your-secret-access-key
 S3_REGION=us-east-1
+
+# Prometheus метрики (опционально)
+# PROMETHEUS_ENABLED=true
+# PROMETHEUS_PATH=/metrics
+# PROMETHEUS_DEFAULT_METRICS=true
+# PROMETHEUS_DEFAULT_LABELS={"app":"atom-dbro","env":"production"}
 
 # Docker Image (для docker-compose.yml)
 # Переменная DOCKER_IMAGE будет установлена автоматически при деплое

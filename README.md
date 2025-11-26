@@ -49,6 +49,36 @@ CORS_ORIGINS=http://localhost:5173,https://yourdomain.com,https://app.yourdomain
 
 **Примечание:** В development режиме (`NODE_ENV !== 'production'`) автоматически разрешаются все локальные адреса (`localhost:*` и `127.0.0.1:*`).
 
+### Prometheus метрики
+
+Приложение поддерживает экспорт метрик Prometheus для мониторинга.
+
+**Конфигурация через переменные окружения:**
+```env
+# Включить/выключить Prometheus (по умолчанию: true)
+PROMETHEUS_ENABLED=true
+
+# Путь для endpoint метрик (по умолчанию: /metrics)
+PROMETHEUS_PATH=/metrics
+
+# Включить стандартные метрики Node.js (по умолчанию: true)
+PROMETHEUS_DEFAULT_METRICS=true
+
+# Дополнительные метки для всех метрик (JSON формат, опционально)
+PROMETHEUS_DEFAULT_LABELS={"app":"atom-dbro","env":"production"}
+```
+
+**Доступ к метрикам:**
+После запуска приложения метрики доступны по адресу (с учетом глобального префикса `admin/api`):
+```
+http://localhost:3000/admin/api/metrics
+```
+
+**Примечание:** 
+- Если `PROMETHEUS_ENABLED=false`, endpoint не будет создан
+- Путь `PROMETHEUS_PATH` указывается относительно корня приложения, но с учетом глобального префикса `admin/api`
+- Для доступа к метрикам без префикса установите `PROMETHEUS_PATH=/metrics` и используйте `http://localhost:3000/metrics`
+
 ## Запуск
 
 ```bash
