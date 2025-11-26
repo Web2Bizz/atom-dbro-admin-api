@@ -15,9 +15,10 @@ import {
   NotFoundException,
   Version,
   HttpCode,
+  Query,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
 import { Response } from 'express';
 import { OrganizationService } from './organization.service';
 import { S3Service } from './s3.service';
@@ -70,11 +71,36 @@ export class OrganizationController {
   @Get()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Получить все организации1' })
+  @ApiOperation({ 
+    summary: 'Получить все организации',
+    description: 'Возвращает список организаций. Выводятся только не удалённые записи (record_status != "DELETED").'
+  })
+  @ApiQuery({ 
+    name: 'filteredByStatus', 
+    required: false, 
+    type: Boolean,
+    description: 'Фильтр по статусу подтверждения организации (isApproved). ' +
+      'По умолчанию (если параметр не указан) выводятся все организации, кроме удалённых (подтверждённые и не подтверждённые). ' +
+      'Возможные значения:\n' +
+      '- true: только подтверждённые организации (isApproved = true)\n' +
+      '- false: только не подтверждённые организации (isApproved = false)',
+    example: true,
+    enum: [true, false]
+  })
   @ApiResponse({ status: 200, description: 'Список организаций' })
   @ApiResponse({ status: 401, description: 'Не авторизован' })
-  findAll() {
-    return this.organizationService.findAll();
+  findAll(@Query('filteredByStatus') filteredByStatus?: string) {
+    // Преобразуем строку в boolean, если параметр передан
+    let isApproved: boolean | undefined = undefined;
+    if (filteredByStatus !== undefined) {
+      if (filteredByStatus === 'true') {
+        isApproved = true;
+      } else if (filteredByStatus === 'false') {
+        isApproved = false;
+      }
+      // Если передано что-то другое, оставляем undefined (выводим все)
+    }
+    return this.organizationService.findAll(isApproved);
   }
 
   @Get(':id')

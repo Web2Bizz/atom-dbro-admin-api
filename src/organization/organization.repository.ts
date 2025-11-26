@@ -63,9 +63,17 @@ export class OrganizationRepository {
 
   /**
    * Получить все организации с связанными данными (города, типы организаций)
+   * @param filteredByStatus - опциональный фильтр по статусу подтверждения (true - только подтверждённые, false - только не подтверждённые)
    */
-  async findAll(): Promise<OrganizationWithRelations[]> {
+  async findAll(filteredByStatus?: boolean): Promise<OrganizationWithRelations[]> {
     try {
+      const conditions = [ne(organizations.recordStatus, 'DELETED')];
+      
+      // Добавляем фильтр по статусу подтверждения, если он указан
+      if (filteredByStatus !== undefined) {
+        conditions.push(eq(organizations.isApproved, filteredByStatus));
+      }
+      
       return await this.db
         .select({
           id: organizations.id,
@@ -101,7 +109,7 @@ export class OrganizationRepository {
           eq(organizations.organizationTypeId, organizationTypes.id),
           ne(organizationTypes.recordStatus, 'DELETED')
         ))
-        .where(ne(organizations.recordStatus, 'DELETED'));
+        .where(and(...conditions));
     } catch (error: any) {
       this.logger.error('Ошибка в findAll:', error);
       this.logger.error('Детали ошибки:', {
