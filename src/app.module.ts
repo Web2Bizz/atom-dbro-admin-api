@@ -16,6 +16,7 @@ import { CategoryModule } from './category/category.module';
 import { QuestUpdateModule } from './quest-update/quest-update.module';
 import { OrganizationUpdateModule } from './organization-update/organization-update.module';
 import { AppController } from './app.controller';
+import { PrometheusModule } from './prometheus/prometheus.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { AppController } from './app.controller';
     CategoryModule,
     QuestUpdateModule,
     OrganizationUpdateModule,
+    PrometheusModule,
   ],
   controllers: [AppController],
 })
