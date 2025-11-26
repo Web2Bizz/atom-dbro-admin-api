@@ -84,8 +84,7 @@ export class OrganizationController {
       'Возможные значения:\n' +
       '- true: только подтверждённые организации (isApproved = true)\n' +
       '- false: только не подтверждённые организации (isApproved = false)',
-    example: true,
-    enum: [true, false]
+    example: true
   })
   @ApiResponse({ status: 200, description: 'Список организаций' })
   @ApiResponse({ status: 401, description: 'Не авторизован' })
