@@ -17,6 +17,7 @@ import { QuestUpdateModule } from './quest-update/quest-update.module';
 import { OrganizationUpdateModule } from './organization-update/organization-update.module';
 import { AppController } from './app.controller';
 import { PrometheusModule } from './prometheus/prometheus.module';
+import { StatisticsModule } from './statistics/statistics.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { PrometheusModule } from './prometheus/prometheus.module';
     QuestUpdateModule,
     OrganizationUpdateModule,
     PrometheusModule,
+    StatisticsModule,
   ],
   controllers: [AppController],
 })
