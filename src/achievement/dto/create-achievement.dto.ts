@@ -8,7 +8,23 @@ export const createAchievementSchema = z.object({
   rarity: z.enum(['common', 'epic', 'rare', 'legendary', 'private'], {
     message: 'Редкость должна быть одним из: common, epic, rare, legendary, private',
   }),
-});
+  questId: z.number().int().positive().optional().nullable(),
+}).refine(
+  (data) => {
+    // Если rarity = 'private', то questId обязателен
+    if (data.rarity === 'private' && (!data.questId || data.questId === null)) {
+      return false;
+    }
+    // Если rarity != 'private', то questId должен быть null или отсутствовать
+    if (data.rarity !== 'private' && data.questId !== null && data.questId !== undefined) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'Для rarity="private" questId обязателен. Для других значений rarity questId должен быть null или отсутствовать',
+  }
+);
 
 export type CreateAchievementDto = z.infer<typeof createAchievementSchema>;
 
@@ -28,5 +44,12 @@ export class CreateAchievementDtoClass {
     enum: ['common', 'epic', 'rare', 'legendary', 'private']
   })
   rarity: 'common' | 'epic' | 'rare' | 'legendary' | 'private';
+
+  @ApiProperty({ 
+    description: 'ID квеста (обязательно только для rarity="private")', 
+    example: 1,
+    required: false
+  })
+  questId?: number | null;
 }
 
