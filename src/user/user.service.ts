@@ -79,7 +79,6 @@ export class UserService {
       role: createUserDto.role,
       level: 1,
       experience: 0,
-      organisationId: createUserDto.organisationId,
     });
     
     return this.formatUser(user);

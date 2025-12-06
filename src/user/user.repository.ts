@@ -63,7 +63,6 @@ export class UserRepository {
           role: users.role,
           level: users.level,
           experience: users.experience,
-          organisationId: users.organisationId,
           recordStatus: users.recordStatus,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
@@ -140,7 +139,6 @@ export class UserRepository {
           role: users.role,
           level: users.level,
           experience: users.experience,
-          organisationId: users.organisationId,
           recordStatus: users.recordStatus,
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
@@ -210,7 +208,6 @@ export class UserRepository {
     role?: string;
     level?: number;
     experience?: number;
-    organisationId?: number | null;
   }): Promise<typeof users.$inferSelect> {
     try {
       // Проверяем уникальность email
@@ -231,7 +228,6 @@ export class UserRepository {
           role: data.role ?? 'USER',
           level: data.level ?? 1,
           experience: data.experience ?? 0,
-          organisationId: data.organisationId ?? null,
         })
         .returning();
       
@@ -278,7 +274,6 @@ export class UserRepository {
       email: string;
       avatarUrls: Record<number, string>;
       role: string;
-      organisationId: number | null;
     }>,
   ): Promise<typeof users.$inferSelect> {
     try {
