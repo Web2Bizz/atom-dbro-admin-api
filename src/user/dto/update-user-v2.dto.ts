@@ -11,7 +11,6 @@ export const updateUserV2Schema = z.object({
   role: z.nativeEnum(UserRole, {
     message: 'Роль должна быть одним из: USER, ADMIN',
   }).optional(),
-  organisationId: z.number().int().positive('ID организации должен быть положительным числом').nullable().optional(),
 });
 
 export type UpdateUserV2Dto = z.infer<typeof updateUserV2Schema>;
@@ -38,8 +37,5 @@ export class UpdateUserV2DtoClass {
 
   @ApiProperty({ description: 'Роль пользователя', enum: UserRole, example: UserRole.USER, required: false })
   role?: UserRole;
-
-  @ApiProperty({ description: 'ID организации', example: 1, required: false, nullable: true })
-  organisationId?: number | null;
 }
 

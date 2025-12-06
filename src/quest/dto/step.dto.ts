@@ -11,6 +11,9 @@ export const stepSchema = z.object({
   description: z.string().optional(),
   status: z.string().min(1, 'Статус этапа обязателен'),
   progress: z.number().int().min(0, 'Прогресс должен быть от 0 до 100').max(100, 'Прогресс должен быть от 0 до 100'),
+  type: z.enum(['finance', 'material', 'contributers'], {
+    message: 'Тип этапа должен быть одним из: finance, material, contributers',
+  }),
   requirement: requirementSchema,
   deadline: z.string().datetime().optional().or(z.date().optional()),
 });
@@ -29,6 +32,9 @@ export class StepDtoClass {
 
   @ApiProperty({ description: 'Прогресс выполнения этапа (0-100)', example: 0, minimum: 0, maximum: 100 })
   progress: number;
+
+  @ApiProperty({ description: 'Тип этапа', example: 'finance', enum: ['finance', 'material', 'contributers'] })
+  type: 'finance' | 'material' | 'contributers';
 
   @ApiProperty({ description: 'Требование этапа (объект)', example: { currentValue: 0, targetValue: 10 }, required: false })
   requirement?: {
