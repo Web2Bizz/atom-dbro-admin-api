@@ -35,7 +35,6 @@ export const users = pgTable('users', {
   role: varchar('role', { length: 20 }).default('USER').notNull(),
   level: integer('level').default(1).notNull(),
   experience: integer('experience').default(0).notNull(),
-  organisationId: integer('organisation_id').references(() => organizations.id, { onDelete: 'set null' }),
   recordStatus: varchar('record_status', { length: 20 }).default('CREATED').notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
@@ -96,7 +95,11 @@ export const organizationOwners = pgTable('organization_owners', {
     .references(() => organizations.id)
     .notNull(),
   userId: integer('user_id').references(() => users.id).notNull(),
-});
+}, (table) => ({
+  uniqueOrganizationUser: unique().on(table.organizationId, table.userId),
+  uniqueUser: unique().on(table.userId), // Один пользователь может иметь только одну организацию
+  uniqueOrganization: unique().on(table.organizationId), // Одна организация может быть указана только один раз
+}));
 
 // Связующая таблица: виды помощи организаций
 export const organizationHelpTypes = pgTable('organization_help_types', {
@@ -157,6 +160,7 @@ export const quests = pgTable('quests', {
     description?: string;
     status: string;
     progress: number;
+    type: 'finance' | 'material' | 'contributers';
     requirement?: {
       currentValue: number;
       targetValue: number;
@@ -222,6 +226,37 @@ export const userQuests = pgTable('user_quests', {
   uniqueUserQuest: unique().on(table.userId, table.questId),
 }));
 
+// Связующая таблица: волонтёры этапов квестов (только finance и material)
+export const questStepVolunteers = pgTable('quest_step_volunteers', {
+  id: serial('id').primaryKey(),
+  questId: integer('quest_id')
+    .references(() => quests.id)
+    .notNull(),
+  type: varchar('type', { length: 20 }).notNull(), // 'finance' | 'material' | 'contributers'
+  contributeValue: integer('contribute_value').notNull().default(0),
+  userId: integer('user_id')
+    .references(() => users.id)
+    .notNull(),
+  isInkognito: boolean('is_inkognito').default(false).notNull(),
+  recordStatus: varchar('record_status', { length: 20 }).default('CREATED').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Связующая таблица: contributers квестов
+export const questContributers = pgTable('quest_contributers', {
+  id: serial('id').primaryKey(),
+  questId: integer('quest_id')
+    .references(() => quests.id)
+    .notNull(),
+  userId: integer('user_id')
+    .references(() => users.id)
+    .notNull(),
+  recordStatus: varchar('record_status', { length: 20 }).default('CREATED').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 // Relations
 export const regionsRelations = relations(regions, ({ many }) => ({
   cities: many(cities),
@@ -241,10 +276,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   achievements: many(userAchievements),
   quests: many(userQuests),
   ownedQuests: many(quests),
-  organisation: one(organizations, {
-    fields: [users.organisationId],
-    references: [organizations.id],
-  }),
+  stepVolunteers: many(questStepVolunteers),
+  contributers: many(questContributers),
 }));
 
 export const helpTypesRelations = relations(helpTypes, ({ many }) => ({
@@ -335,6 +368,8 @@ export const questsRelations = relations(quests, ({ one, many }) => ({
   userQuests: many(userQuests),
   categories: many(questCategories),
   updates: many(questUpdates),
+  stepVolunteers: many(questStepVolunteers),
+  contributers: many(questContributers),
 }));
 
 export const questCategoriesRelations = relations(questCategories, ({ one }) => ({
@@ -369,6 +404,28 @@ export const userQuestsRelations = relations(userQuests, ({ one }) => ({
   }),
   quest: one(quests, {
     fields: [userQuests.questId],
+    references: [quests.id],
+  }),
+}));
+
+export const questStepVolunteersRelations = relations(questStepVolunteers, ({ one }) => ({
+  user: one(users, {
+    fields: [questStepVolunteers.userId],
+    references: [users.id],
+  }),
+  quest: one(quests, {
+    fields: [questStepVolunteers.questId],
+    references: [quests.id],
+  }),
+}));
+
+export const questContributersRelations = relations(questContributers, ({ one }) => ({
+  user: one(users, {
+    fields: [questContributers.userId],
+    references: [users.id],
+  }),
+  quest: one(quests, {
+    fields: [questContributers.questId],
     references: [quests.id],
   }),
 }));
