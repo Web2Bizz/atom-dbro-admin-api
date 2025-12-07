@@ -195,7 +195,7 @@ describe('LoginLoggingInterceptor', () => {
       await interceptor.intercept(context, handler).toPromise();
 
       // Метрики для успешного входа не должны быть записаны, если нет user.id
-      expect(prometheusService.incrementLoginAttempts).not.toHaveBeenCalledWith('success');
+      expect(prometheusService.incrementLoginAttempts).not.toHaveBeenCalled();
     });
 
     it('should determine error reason from error message', async () => {

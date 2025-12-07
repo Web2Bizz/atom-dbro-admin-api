@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, UseGuards, UseInterceptors, Version } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, UseGuards, UseInterceptors, Version, Inject } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto, loginSchema, LoginDtoClass } from './dto/login.dto';
@@ -13,7 +13,10 @@ import { ValidateTokenGuard } from './guards/validate-token.guard';
 @ApiTags('Авторизация')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    @Inject(AuthService)
+    private readonly authService: AuthService,
+  ) {}
 
   @Post('login')
   @UseInterceptors(LoginLoggingInterceptor)

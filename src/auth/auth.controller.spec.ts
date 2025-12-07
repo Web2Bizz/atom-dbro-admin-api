@@ -1,6 +1,17 @@
 import 'reflect-metadata';
 import { Test, TestingModule } from '@nestjs/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+// Mock bcrypt before importing AuthService
+vi.mock('bcrypt', () => ({
+  default: {
+    compare: vi.fn(),
+    hash: vi.fn(),
+  },
+  compare: vi.fn(),
+  hash: vi.fn(),
+}));
+
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -174,4 +185,5 @@ describe('AuthController', () => {
     });
   });
 });
+
 

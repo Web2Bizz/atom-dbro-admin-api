@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, Inject } from '@nestjs/common';
 import { AchievementRepository } from './achievement.repository';
 import { CreateAchievementDto } from './dto/create-achievement.dto';
 import { UpdateAchievementDto } from './dto/update-achievement.dto';
@@ -6,6 +6,7 @@ import { UpdateAchievementDto } from './dto/update-achievement.dto';
 @Injectable()
 export class AchievementService {
   constructor(
+    @Inject(AchievementRepository)
     private repository: AchievementRepository,
   ) {}
 

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, Logger, BadRequestException, Inject } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -13,9 +13,13 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   constructor(
+    @Inject(UserService)
     private userService: UserService,
+    @Inject(UserRepository)
     private userRepository: UserRepository,
+    @Inject(JwtService)
     private jwtService: JwtService,
+    @Inject(ConfigService)
     private configService: ConfigService,
   ) {}
 
@@ -113,6 +117,11 @@ export class AuthService {
         },
       };
     } catch (error) {
+      // Если ошибка уже является UnauthorizedException, пробрасываем её как есть
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      // Иначе оборачиваем в общую ошибку
       throw new UnauthorizedException('Недействительный refresh token');
     }
   }
