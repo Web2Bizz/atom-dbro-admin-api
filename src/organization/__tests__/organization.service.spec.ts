@@ -974,7 +974,19 @@ describe('OrganizationService', () => {
         },
       ];
 
-      setupDbMock([[mockUser], [mockOrganizationType], [mockHelpType], [mockCity], [mockCity]]);
+      // Порядок вызовов:
+      // 1. user
+      // 2. findCityByName('Москва') - точное совпадение (найдено)
+      // 3. organizationTypes
+      // 4. helpTypes
+      // 5. citiesData для координат
+      setupDbMock([
+        [mockUser],           // 1. проверка пользователя
+        [mockCity],           // 2. findCityByName - точное совпадение (для cityId = 0)
+        [mockOrganizationType], // 3. проверка типов организаций
+        [mockHelpType],       // 4. проверка видов помощи
+        [mockCity],           // 5. получение данных городов для координат
+      ]);
       mockRepository.createMany.mockResolvedValue([mockOrganization]);
       mockRepository.addOwnersToOrganizations.mockResolvedValue(undefined);
       mockRepository.addHelpTypes.mockResolvedValue(undefined);
@@ -995,16 +1007,14 @@ describe('OrganizationService', () => {
         },
       ];
 
-      // Порядок: user, cities (для cityId - пусто, т.к. cityId = 0), 
-      // findCityByName - точное совпадение (пусто), частичное совпадение (пусто),
-      // organizationTypes, helpTypes, cities (для координат - не доходит)
+      // Порядок: user, findCityByName - точное совпадение (не найдено), 
+      // findCityByName - частичное совпадение (не найдено), затем ошибка
+      // При cityId = 0 проверка городов по ID не выполняется (cityIds.size = 0)
       setupDbMock([
         [mockUser],           // 1. проверка пользователя
-        [],                   // 2. cities для cityId (пусто, т.к. cityId = 0)
-        [],                   // 3. findCityByName - точное совпадение (не найдено)
-        [],                   // 4. findCityByName - частичное совпадение (не найдено)
-        [mockOrganizationType], // 5. проверка типов организаций
-        [mockHelpType],       // 6. проверка видов помощи
+        [],                   // 2. findCityByName - точное совпадение (не найдено)
+        [],                   // 3. findCityByName - частичное совпадение (не найдено)
+        // Ошибка выбрасывается здесь, дальше не доходит
       ]);
 
       await expect(service.createMany(dtoWithUnknownCity, 1)).rejects.toThrow(
