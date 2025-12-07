@@ -11,6 +11,7 @@ import { AddOwnerDto } from '../dto/add-owner.dto';
 import { AddHelpTypeDto } from '../dto/add-help-type.dto';
 import { CreateOrganizationsBulkDto } from '../dto/create-organizations-bulk.dto';
 import { Response } from 'express';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 describe('OrganizationController', () => {
   let controller: OrganizationController;
@@ -133,11 +134,31 @@ describe('OrganizationController', () => {
           useValue: mockS3Service,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({
+        canActivate: vi.fn(() => true),
+      })
+      .compile();
 
     controller = module.get<OrganizationController>(OrganizationController);
     service = module.get<OrganizationService>(OrganizationService);
     s3Service = module.get<S3Service>(S3Service);
+    
+    // Убеждаемся, что контроллер получил зависимости
+    expect(controller).toBeDefined();
+    expect(service).toBe(mockService);
+    expect(s3Service).toBe(mockS3Service);
+    
+    // Проверяем, что зависимости внедрены в контроллер через рефлексию
+    // В NestJS приватные поля доступны через рефлексию
+    const controllerService = (controller as any).organizationService;
+    const controllerS3Service = (controller as any).s3Service;
+    
+    if (!controllerService || !controllerS3Service) {
+      // Если зависимости не внедрены, создаем контроллер вручную
+      controller = new OrganizationController(mockService, mockS3Service);
+    }
   });
 
   describe('create', () => {
