@@ -44,15 +44,15 @@ describe('AchievementRepository', () => {
 
   beforeEach(async () => {
     mockDb = {
-      select: vi.fn().mockReturnThis(),
-      from: vi.fn().mockReturnThis(),
-      where: vi.fn().mockReturnThis(),
-      insert: vi.fn().mockReturnThis(),
-      values: vi.fn().mockReturnThis(),
+      select: vi.fn(),
+      from: vi.fn(),
+      where: vi.fn(),
+      insert: vi.fn(),
+      values: vi.fn(),
       returning: vi.fn(),
-      update: vi.fn().mockReturnThis(),
-      set: vi.fn().mockReturnThis(),
-      innerJoin: vi.fn().mockReturnThis(),
+      update: vi.fn(),
+      set: vi.fn(),
+      innerJoin: vi.fn(),
     } as unknown as NodePgDatabase;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -91,6 +91,45 @@ describe('AchievementRepository', () => {
       const result = await repository.findByTitle('Несуществующее');
 
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('findByTitleExcludingId', () => {
+    it('should return achievement when found with different id', async () => {
+      (mockDb.select as any).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([mockAchievement]),
+        }),
+      });
+
+      const result = await repository.findByTitleExcludingId('Первое достижение', 999);
+
+      expect(result).toEqual(mockAchievement);
+    });
+
+    it('should return undefined when not found', async () => {
+      (mockDb.select as any).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      });
+
+      const result = await repository.findByTitleExcludingId('Несуществующее', 1);
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should exclude specified id from search', async () => {
+      (mockDb.select as any).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([]),
+        }),
+      });
+
+      const result = await repository.findByTitleExcludingId('Первое достижение', 1);
+
+      expect(result).toBeUndefined();
+      expect(mockDb.select).toHaveBeenCalled();
     });
   });
 
