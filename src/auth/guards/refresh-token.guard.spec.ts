@@ -124,7 +124,7 @@ describe('RefreshTokenGuard', () => {
     });
 
     it('should add user information to request after validation', async () => {
-      const request = { body: { refresh_token: 'valid-token' } };
+      const request: any = { body: { refresh_token: 'valid-token' } };
       const context = createMockExecutionContext({ refresh_token: 'valid-token' });
       const payload = { email: 'admin@example.com', sub: 1 };
       vi.spyOn(jwtService, 'verify').mockReturnValue(payload as any);

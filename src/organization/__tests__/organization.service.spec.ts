@@ -263,7 +263,7 @@ describe('OrganizationService', () => {
     // Проверяем, что сервис получил repository
     // Если repository не внедрен, создаем сервис вручную
     if (!(service as any).repository) {
-      service = new OrganizationService(mockRepository, mockS3Service, mockDb);
+      service = new OrganizationService(mockRepository as any, mockS3Service as any, mockDb as any);
     }
   });
 
