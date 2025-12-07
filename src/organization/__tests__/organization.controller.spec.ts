@@ -157,7 +157,7 @@ describe('OrganizationController', () => {
     
     if (!controllerService || !controllerS3Service) {
       // Если зависимости не внедрены, создаем контроллер вручную
-      controller = new OrganizationController(mockService, mockS3Service);
+      controller = new OrganizationController(mockService as any, mockS3Service as any);
     }
   });
 
